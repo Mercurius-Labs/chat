@@ -201,6 +201,9 @@ func serveWebSocket(wrt http.ResponseWriter, req *http.Request) {
 		sess.remoteAddr = req.RemoteAddr
 	}
 
+	authToken := getAuthToken(req)
+	sess.authToken = authToken
+
 	logs.Info.Println("ws: session started", sess.sid, sess.remoteAddr, count)
 
 	// Do work in goroutines to return from serveWebSocket() to release file pointers.

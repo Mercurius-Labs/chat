@@ -310,6 +310,21 @@ func getAPIKey(req *http.Request) string {
 	return apikey
 }
 
+func getAuthToken(req *http.Request) string {
+	token := req.Header.Get("X-Tinode-token")
+	if token != "" {
+		return token
+	}
+	if token = req.URL.Query().Get("token"); token != "" {
+		return token
+	}
+	if c, err := req.Cookie("token"); err == nil {
+		token = c.Value
+	}
+
+	return token
+}
+
 // Extracts authorization credentials from an HTTP request.
 // Returns authentication method and secret.
 func getHttpAuth(req *http.Request) (method, secret string) {

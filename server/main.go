@@ -31,6 +31,7 @@ import (
 	_ "github.com/tinode/chat/server/auth/anon"
 	_ "github.com/tinode/chat/server/auth/basic"
 	_ "github.com/tinode/chat/server/auth/code"
+	_ "github.com/tinode/chat/server/auth/merc"
 	_ "github.com/tinode/chat/server/auth/rest"
 	_ "github.com/tinode/chat/server/auth/token"
 

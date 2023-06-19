@@ -107,6 +107,9 @@ type Session struct {
 	// Authentication level - NONE (unset), ANON, AUTH, ROOT.
 	authLvl auth.Level
 
+	// 已经验证好的token
+	authToken string
+
 	// Time when the long polling session was last refreshed
 	lastTouched time.Time
 
@@ -755,7 +758,7 @@ func (s *Session) hello(msg *ClientComMessage) {
 			"maxTagLength":       maxTagLength,
 			"maxTagCount":        globals.maxTagCount,
 			"maxFileUploadSize":  globals.maxFileUploadSize,
-			"reqCred":            globals.validatorClientConfig,
+			// "reqCred":            globals.validatorClientConfig,
 		}
 		if len(globals.iceServers) > 0 {
 			params["iceServers"] = globals.iceServers
@@ -850,7 +853,6 @@ func (s *Session) hello(msg *ClientComMessage) {
 		// In case of deviceID update just report success.
 		httpStatus = http.StatusOK
 		httpStatusText = "ok"
-
 	} else {
 		httpStatus = http.StatusCreated
 		httpStatusText = "created"
@@ -948,7 +950,7 @@ func (s *Session) login(msg *ClientComMessage) {
 	}
 
 	if err != nil {
-		logs.Warn.Println("s.login: user state check failed", rec.Uid, err, s.sid)
+		logs.Warn.Printf("s.login: user state check failed, uid=%s, err=%v, sid=%s", rec.Uid, err, s.sid)
 		s.queueOut(decodeStoreError(err, msg.Id, msg.Timestamp, nil))
 		return
 	}
