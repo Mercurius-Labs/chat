@@ -86,7 +86,15 @@ func (a authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Rec
 		}
 
 		rec, err := a.AddRecord(&auth.Rec{Uid: user.Uid(), Tags: user.Tags}, secret, remoteAddr)
-		return rec, nil, err
+		if err != nil {
+			logs.Warn.Println("create user: add auth record failed", err)
+			// Attempt to delete incomplete user record
+			if e := store.Users.Delete(user.Uid(), true); e != nil {
+				logs.Warn.Println("create user: failed to delete incomplete user record", e)
+			}
+			return nil, nil, err
+		}
+		return rec, nil, nil
 	}
 
 	if !expires.IsZero() && expires.Before(time.Now()) {
