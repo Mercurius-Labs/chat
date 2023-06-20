@@ -295,6 +295,7 @@ func (usersMapper) Create(user *types.User, private interface{}) (*types.User, e
 
 	err := adp.UserCreate(user)
 	if err != nil {
+		logs.Err.Printf("usersMapper.Create userCreate failed, err=%v", err)
 		return nil, err
 	}
 
@@ -318,6 +319,7 @@ func (usersMapper) Create(user *types.User, private interface{}) (*types.User, e
 			Private:   nil,
 		})
 	if err != nil {
+		logs.Err.Printf("usersMapper.Create subs.Create failed, err=%v", err)
 		// Best effort to delete incomplete user record. Orphaned user records are not a problem.
 		// They just take up space.
 		adp.UserDelete(user.Uid(), true)

@@ -15,8 +15,8 @@ buildCount=${#goplat[@]}
 
 # Supported database tags
 # dbadapters=( mysql mongodb rethinkdb postgres )
-dbadapters=( postgres )
-dbtags=( ${dbadapters[@]} alldbs )
+# dbtags=( ${dbadapters[@]} alldbs )
+dbtags=( postgres )
 
 for line in $@; do
   eval "$line"

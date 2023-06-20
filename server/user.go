@@ -138,8 +138,8 @@ func replyCreateUser(s *Session, msg *ClientComMessage, rec *auth.Rec) {
 	if err != nil {
 		logs.Warn.Println("create user: add auth record failed", err, "sid=", s.sid)
 		// Attempt to delete incomplete user record
-		if err = store.Users.Delete(user.Uid(), true); err != nil {
-			logs.Warn.Println("create user: failed to delete incomplete user record", err, "sid=", s.sid)
+		if e := store.Users.Delete(user.Uid(), true); e != nil {
+			logs.Warn.Println("create user: failed to delete incomplete user record", e, "sid=", s.sid)
 		}
 		s.queueOut(decodeStoreError(err, msg.Id, msg.Timestamp, nil))
 		return

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tinode/chat/server/auth"
+	"github.com/tinode/chat/server/logs"
 	"github.com/tinode/chat/server/store"
 	"github.com/tinode/chat/server/store/types"
 
@@ -141,6 +142,7 @@ func (a *authenticator) AddRecord(rec *auth.Rec, secret []byte, remoteAddr strin
 
 	err = store.Users.AddAuthRecord(rec.Uid, authLevel, a.name, uname, passhash, expires)
 	if err != nil {
+		logs.Err.Printf("auth_basic.AddAuthRecord failed, err=%v", err)
 		return nil, err
 	}
 

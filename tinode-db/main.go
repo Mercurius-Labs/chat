@@ -21,6 +21,7 @@ import (
 	"github.com/tinode/chat/server/store"
 	"github.com/tinode/chat/server/store/types"
 	jcr "github.com/tinode/jsonco"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type configType struct {
@@ -333,23 +334,36 @@ func main() {
 		} else {
 			password = parts[1]
 		}
-
-		var user types.User
-		user.Public = &card{
-			Fn: "ROOT " + uname,
-		}
-		store.Users.Create(&user, nil)
-
-		if _, err := store.Users.Create(&user, nil); err != nil {
-			log.Fatalln("Failed to create ROOT user:", err)
+		passhash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("encrypt password failed, err=%v", err)
 		}
 
-		adapter := store.Store.GetAdapter()
-		if err := adapter.AuthUpdRecord(user.Uid(), "basic", "", auth.LevelRoot, nil, time.Time{}); err != nil {
-			store.Users.Delete(user.Uid(), true)
-			log.Fatalln("Failed to create ROOT user:", err)
+		uid, _, _, _, err := store.Users.GetAuthUniqueRecord("basic", uname)
+		if err != nil {
+			log.Fatalf("getAuthUniqueRecord failed, err=%v", err)
 		}
-		log.Printf("ROOT user created: '%s:%s'", uname, password)
+
+		if uid.IsZero() {
+			var user types.User
+			user.Public = &card{
+				Fn: "ROOT " + uname,
+			}
+			store.Users.Create(&user, nil)
+
+			if _, err := store.Users.Create(&user, nil); err != nil {
+				log.Fatalf("Failed to create ROOT user, err=%v", err)
+			}
+
+			adapter := store.Store.GetAdapter()
+			if err := adapter.AuthAddRecord(user.Uid(), "basic", uname, auth.LevelRoot, passhash, time.Time{}); err != nil {
+				store.Users.Delete(user.Uid(), true)
+				log.Fatalln("Failed to create ROOT user, AuthUpdRecord failed:", err)
+			}
+			log.Printf("ROOT user created: '%s:%s'", uname, password)
+		} else {
+			log.Printf("ROOT user has exitsted: '%s:%s'", uname, password)
+		}
 	}
 
 	log.Println("All done.")
