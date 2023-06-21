@@ -51,7 +51,9 @@ func topicInit(t *Topic, join *ClientComMessage, h *Hub) {
 		err = initTopicGrp(t)
 	case t.xoriginal == "sys":
 		// Initialize system topic.
-		err = initTopicSys(t)
+		err = initTopicSys(t, types.ModeWrite)
+	case t.xoriginal == "mercGrp":
+		err = initTopicSys(t, types.ModeCPublic)
 	default:
 		// Unrecognized topic name
 		err = types.ErrTopicNotFound
@@ -666,7 +668,7 @@ func initTopicGrp(t *Topic) error {
 }
 
 // Initialize system topic. System topic is a singleton, always in memory.
-func initTopicSys(t *Topic) error {
+func initTopicSys(t *Topic, accessAuth types.AccessMode) error {
 	t.cat = types.TopicCatSys
 
 	stopic, err := store.Topics.Get(t.name)
@@ -683,8 +685,10 @@ func initTopicSys(t *Topic) error {
 	// There is no t.owner
 
 	// Default permissions are 'W'
-	t.accessAuth = types.ModeWrite
-	t.accessAnon = types.ModeWrite
+	// t.accessAuth = types.ModeWrite
+	// t.accessAnon = types.ModeWrite
+	t.accessAuth = accessAuth
+	t.accessAnon = accessAuth
 
 	t.public = stopic.Public
 	t.trusted = stopic.Trusted

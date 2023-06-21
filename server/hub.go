@@ -29,6 +29,9 @@ var requestLatencyDistribution = []float64{1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 
 var outgoingMessageSizeDistribution = []float64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 16384,
 	65536, 262144, 1048576, 4194304, 16777216, 67108864, 268435456, 1073741824, 4294967296}
 
+// system defined topic
+var systemDefinedTopic = []string{"sys", "mercGrp"}
+
 // Request to hub to remove the topic
 type topicUnreg struct {
 	// Original request, could be nil.
@@ -142,9 +145,11 @@ func newHub() *Hub {
 
 	go h.run()
 
-	if !globals.cluster.isRemoteTopic("sys") {
-		// Initialize system 'sys' topic. There is only one sys topic per cluster.
-		h.join <- &ClientComMessage{RcptTo: "sys", Original: "sys"}
+	for _, sysTopic := range systemDefinedTopic {
+		if !globals.cluster.isRemoteTopic(sysTopic) {
+			// Initialize system 'sys' topic. There is only one sys topic per cluster.
+			h.join <- &ClientComMessage{RcptTo: sysTopic, Original: sysTopic}
+		}
 	}
 
 	return h
@@ -311,12 +316,14 @@ func (h *Hub) run() {
 			})
 
 			// Check if 'sys' topic has migrated to this node.
-			if h.topicGet("sys") == nil && !globals.cluster.isRemoteTopic("sys") {
-				// Yes, 'sys' has migrated here. Initialize it.
-				// The h.join is unbuffered. We must call from another goroutine. Otherwise deadlock.
-				go func() {
-					h.join <- &ClientComMessage{RcptTo: "sys", Original: "sys"}
-				}()
+			for _, sysTopic := range systemDefinedTopic {
+				if h.topicGet(sysTopic) == nil && !globals.cluster.isRemoteTopic(sysTopic) {
+					// Yes, 'sys' has migrated here. Initialize it.
+					// The h.join is unbuffered. We must call from another goroutine. Otherwise deadlock.
+					go func(t string) {
+						h.join <- &ClientComMessage{RcptTo: t, Original: t}
+					}(sysTopic)
+				}
 			}
 
 		case hubdone := <-h.shutdown:

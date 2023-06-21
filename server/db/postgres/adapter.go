@@ -638,7 +638,8 @@ func (a *adapter) UpgradeDb() error {
 func createSystemTopic(tx pgx.Tx) error {
 	now := t.TimeNow()
 	query := `INSERT INTO topics(createdat,updatedat,state,touchedat,name,access,public)
-				VALUES($1,$2,$3,$4,'sys','{"Auth": "N","Anon": "N"}','{"fn": "System"}')`
+				VALUES($1,$2,$3,$4,'sys','{"Auth": "N","Anon": "N"}','{"fn": "System"}'),
+				($1,$2,$3,$4,'mercGrp','{"Auth": "N","Anon": "N"}','{"fn": "System"}')`
 	_, err := tx.Exec(context.Background(), query, now, now, t.StateOK, now)
 	return err
 }
