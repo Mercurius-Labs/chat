@@ -1503,7 +1503,7 @@ func (t *Topic) thisUserSub(sess *Session, pkt *ClientComMessage, asUid types.Ui
 			// Make sure the user is not asking for unreasonable permissions
 			userData.modeWant = (userData.modeWant & types.ModeCP2P) | types.ModeApprove
 		} else if t.cat == types.TopicCatSys {
-			if asLvl != auth.LevelRoot {
+			if asLvl != auth.LevelRoot && t.name != "mercGrp" {
 				sess.queueOut(ErrPermissionDeniedReply(pkt, now))
 				return nil, errors.New("subscription to 'sys' topic requires root access level")
 			}
