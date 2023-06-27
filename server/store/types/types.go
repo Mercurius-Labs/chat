@@ -1291,6 +1291,10 @@ const (
 
 // GetTopicCat given topic name returns topic category.
 func GetTopicCat(name string) TopicCat {
+	if name == "mercGrp" {
+		return TopicCatSys
+	}
+
 	switch name[:3] {
 	case "usr":
 		return TopicCatMe
