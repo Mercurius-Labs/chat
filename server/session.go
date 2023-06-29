@@ -1236,6 +1236,8 @@ func (s *Session) note(msg *ClientComMessage) {
 	// Expand topic name and validate request.
 	var resp *ServerComMessage
 	msg.RcptTo, resp = s.expandTopicName(msg)
+	logs.Info.Printf("note rcptTo=%s", msg.RcptTo)
+
 	if resp != nil {
 		// Silently ignoring the message
 		return
@@ -1262,6 +1264,7 @@ func (s *Session) note(msg *ClientComMessage) {
 			return
 		}
 	default:
+		logs.Info.Println("note not support, what=", msg.Note.What)
 		return
 	}
 
@@ -1269,6 +1272,7 @@ func (s *Session) note(msg *ClientComMessage) {
 		// Pings can be sent to subscribed topics only
 		select {
 		case sub.broadcast <- msg:
+			logs.Info.Println("send note msg to sub success, msg.ID", msg.Id)
 		default:
 			// Reply with a 503 to the user.
 			s.queueOut(ErrServiceUnavailableReply(msg, msg.Timestamp))

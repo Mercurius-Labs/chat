@@ -2,5 +2,5 @@
 
 cd $(dirname $0)
 pushd ../../releases/tmp/ > /dev/null
-    ./tinode
+    ./tinode -log_flags=date,time,shortfile
 popd

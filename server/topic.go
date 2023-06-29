@@ -631,6 +631,7 @@ func (t *Topic) handleSubscription(msg *ClientComMessage) error {
 	}
 
 	if err := t.subscriptionReply(asChan, msg); err != nil {
+		logs.Warn.Println("subscriptionReply failed, err=", err)
 		return err
 	}
 
@@ -1101,8 +1102,10 @@ func (t *Topic) handlePubBroadcast(msg *ClientComMessage) {
 func (t *Topic) handleNoteBroadcast(msg *ClientComMessage) {
 	if t.isInactive() {
 		// Ignore broadcast - topic is paused or being deleted.
+		logs.Info.Printf("topic=%s is inactive", t.name)
 		return
 	}
+	logs.Info.Println("process note msg, msg.what", msg.Note.What)
 
 	if msg.Note.SeqId > t.lastID {
 		// Drop bogus read notification
@@ -1818,6 +1821,7 @@ func (t *Topic) thisUserSub(sess *Session, pkt *ClientComMessage, asUid types.Ui
 
 	if !userData.modeGiven.IsJoiner() {
 		// User was banned
+		logs.Warn.Println("topic access denied, modeGiven=", userData.modeGiven)
 		sess.queueOut(ErrPermissionDeniedReply(pkt, now))
 		return nil, errors.New("topic access denied; user is banned")
 	}
