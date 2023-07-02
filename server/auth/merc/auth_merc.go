@@ -42,12 +42,9 @@ func (a authenticator) AddRecord(rec *auth.Rec, secret []byte, remoteAddr string
 	}
 
 	authLevel := rec.AuthLevel
-	if authLevel != auth.LevelNone {
-		authLevel = auth.LevelNone
+	if authLevel == auth.LevelNone {
+		authLevel = auth.LevelAuth
 	}
-	// if authLevel == auth.LevelNone {
-	// 	authLevel = auth.LevelAuth
-	// }
 
 	err = store.Users.AddAuthRecord(rec.Uid, authLevel, realName, mercID, passhash, expires)
 	if err != nil {
@@ -77,6 +74,7 @@ func (a authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Rec
 		user := &types.User{
 			Access: types.DefaultAccess{
 				Auth: types.ModeCP2P | types.ModeCPublic,
+				// Auth: types.ModeJoin | types.ModeApprove,
 				Anon: types.ModeNone,
 			},
 		}

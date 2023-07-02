@@ -1105,7 +1105,6 @@ func (t *Topic) handleNoteBroadcast(msg *ClientComMessage) {
 		logs.Info.Printf("topic=%s is inactive", t.name)
 		return
 	}
-	logs.Info.Println("process note msg, msg.what", msg.Note.What)
 
 	if msg.Note.SeqId > t.lastID {
 		// Drop bogus read notification

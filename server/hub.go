@@ -250,6 +250,8 @@ func (h *Hub) run() {
 				logs.Info.Printf("Hub. Topic[%s] is unknown or offline", msg.RcptTo)
 
 				msg.sess.queueOut(NoErrAcceptedExplicitTs(msg.Id, msg.RcptTo, types.TimeNow(), msg.Timestamp))
+			} else {
+				logs.Warn.Printf("Hub. Topic[%s] is unknown, note msg is ignore", msg.RcptTo)
 			}
 		case msg := <-h.routeSrv:
 			// This is a server message from a connection not subscribed to topic
