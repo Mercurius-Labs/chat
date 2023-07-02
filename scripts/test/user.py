@@ -72,8 +72,9 @@ class User(threading.Thread):
 def b64(s: str) -> str:
     return base64.b64encode(s.encode()).decode()
 
-user_1 = User("user_27")
-user_2 = User("user_28")
+now = int(time.time())
+user_1 = User(f"user_1_{now}")
+user_2 = User(f"user_2_{now}")
 user_1.start()
 user_2.start()
 time.sleep(1)
@@ -91,14 +92,35 @@ user_2.user_id = login['ctrl']['params']['user']
 user_2.send_wait({"sub":{"topic":"me", "get":{"what": "sub"}}})
 
 
-# user2 try to sub user1
-user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-user_1.await_msg({'pres': {"what": "acs"}})
-user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"JRWSA"}}})
+def user_p2p_approve():
+    # user2 try to sub user1
+    user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+    user_1.await_msg({'pres': {"what": "acs"}})
+    user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+    user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"JRWSA"}}})
 
-# send msg
-user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
-# user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
+    # send msg
+    user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
+    user_1.send_wait({"pub": {"topic": user_2.user_id, "content": "hello with two", "noecho": True}})
+
+def user_p2p_reject():
+    # user2 try to sub user1
+    user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+    user_1.await_msg({'pres': {"what": "acs"}})
+    user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+    user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"N"}}})
+    user_2.await_msg({'pres': {'what': 'acs'}})
+
+    # send msg
+    user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
+
+
+def user_send_mercGrp():
+    user_1.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}}, "what": "data sub"}})
+    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp"}})
+    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 2"}})
+
+user_send_mercGrp()
 
 user_1.join()
 user_2.join()

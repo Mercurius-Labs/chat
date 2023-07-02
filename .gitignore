@@ -1,3 +1,4 @@
 releases/
 server/static/
 .vscode/
+server/__debug_bin
