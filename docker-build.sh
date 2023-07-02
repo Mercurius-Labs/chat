@@ -24,13 +24,19 @@ if [[ ${ver[2]} != *"-"* ]]; then
   FULLRELEASE=1
 fi
 
+# build source code
+./build.sh tag=vdocker
+rm -rf docker/tinode/releases
+mv releases/docker docker/tinode/releases
+
 # Use buildx if the current platform is not x86.
 buildcmd='build'
 if [ `uname -m` != 'x86_64' ]; then
   buildcmd='buildx build --platform=linux/amd64'
 fi
 
-dbtags=( mysql postgres mongodb rethinkdb alldbs )
+# dbtags=( mysql postgres mongodb rethinkdb alldbs )
+dbtags=( postgres )
 
 # Build an images for various DB backends
 for dbtag in "${dbtags[@]}"
@@ -54,21 +60,26 @@ do
 done
 
 # Build chatbot image
-buildtags="--tag tinode/chatbot:${ver[0]}.${ver[1]}.${ver[2]}"
-rmitags="tinode/chatbot:${ver[0]}.${ver[1]}.${ver[2]}"
-if [ -n "$FULLRELEASE" ]; then
-  rmitags="${rmitags} tinode/chatbot:latest tinode/chatbot:${ver[0]}.${ver[1]}"
-  buildtags="${buildtags}  --tag tinode/chatbot:latest --tag tinode/chatbot:${ver[0]}.${ver[1]}"
-fi
-docker rmi ${rmitags}
-docker ${buildcmd} --build-arg VERSION=$tag ${buildtags} docker/chatbot
+function build_chatbot_image() {
+  buildtags="--tag tinode/chatbot:${ver[0]}.${ver[1]}.${ver[2]}"
+  rmitags="tinode/chatbot:${ver[0]}.${ver[1]}.${ver[2]}"
+  if [ -n "$FULLRELEASE" ]; then
+    rmitags="${rmitags} tinode/chatbot:latest tinode/chatbot:${ver[0]}.${ver[1]}"
+    buildtags="${buildtags}  --tag tinode/chatbot:latest --tag tinode/chatbot:${ver[0]}.${ver[1]}"
+  fi
+  docker rmi ${rmitags}
+  docker ${buildcmd} --build-arg VERSION=$tag ${buildtags} docker/chatbot
+}
 
 # Build exporter image
-buildtags="--tag tinode/exporter:${ver[0]}.${ver[1]}.${ver[2]}"
-rmitags="tinode/exporter:${ver[0]}.${ver[1]}.${ver[2]}"
-if [ -n "$FULLRELEASE" ]; then
-  rmitags="${rmitags} tinode/exporter:latest tinode/exporter:${ver[0]}.${ver[1]}"
-  buildtags="${buildtags}  --tag tinode/exporter:latest --tag tinode/exporter:${ver[0]}.${ver[1]}"
-fi
-docker rmi ${rmitags}
-docker ${buildcmd} --build-arg VERSION=$tag ${buildtags} docker/exporter
+function build_exporter_image() {
+  buildtags="--tag tinode/exporter:${ver[0]}.${ver[1]}.${ver[2]}"
+  rmitags="tinode/exporter:${ver[0]}.${ver[1]}.${ver[2]}"
+  if [ -n "$FULLRELEASE" ]; then
+    rmitags="${rmitags} tinode/exporter:latest tinode/exporter:${ver[0]}.${ver[1]}"
+    buildtags="${buildtags}  --tag tinode/exporter:latest --tag tinode/exporter:${ver[0]}.${ver[1]}"
+  fi
+  docker rmi ${rmitags}
+  docker ${buildcmd} --build-arg VERSION=$tag ${buildtags} docker/exporter
+}
+

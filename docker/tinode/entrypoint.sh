@@ -140,7 +140,7 @@ if [ -s /botdata/tino-password ] ; then
 	./credentials.sh /botdata/.tn-cookie < /botdata/tino-password
 fi
 
-args=("--config=${CONFIG}" "--static_data=$STATIC_DIR" "--cluster_self=$CLUSTER_SELF" "--pprof_url=$PPROF_URL")
+args=("--config=${CONFIG}" "--static_data=$STATIC_DIR" "--cluster_self=$CLUSTER_SELF" "--pprof_url=$PPROF_URL" "-log_flags=date,time,shortfile")
 
 # Run the tinode server.
 ./tinode "${args[@]}" 2>> /var/log/tinode.log

@@ -15,8 +15,8 @@ ARG VERSION=0.21
 ENV VERSION=$VERSION
 ARG BINVERS=$VERSION
 
-LABEL maintainer="Tinode Team <info@tinode.co>"
-LABEL name="TinodeChatServer"
+LABEL maintainer="Merc"
+LABEL name="Merc"
 LABEL version=$VERSION
 
 # Build-time options.
@@ -123,8 +123,8 @@ ENV SERVER_STATUS_PATH=''
 
 # Install root certificates, they are needed for email validator to work
 # with the TLS SMTP servers like Gmail or Mailjet. Also add bash and grep.
-RUN apk update && \
-	apk add --no-cache ca-certificates bash grep
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+RUN apk update && apk add --no-cache ca-certificates bash grep
 
 WORKDIR /opt/tinode
 
@@ -133,14 +133,15 @@ COPY config.template .
 COPY entrypoint.sh .
 
 # Get the desired Tinode build.
-ADD https://github.com/tinode/chat/releases/download/v$BINVERS/tinode-$TARGET_DB.linux-amd64.tar.gz .
+# ADD https://github.com/tinode/chat/releases/download/v$BINVERS/tinode-$TARGET_DB.linux-amd64.tar.gz .
+COPY releases/* .
 
 # Unpack the Tinode archive.
-RUN tar -xzf tinode-$TARGET_DB.linux-amd64.tar.gz \
-	&& rm tinode-$TARGET_DB.linux-amd64.tar.gz
+#RUN tar -xzf tinode-$TARGET_DB.linux-amd64.tar.gz \
+#	&& rm tinode-$TARGET_DB.linux-amd64.tar.gz
 
 # Create directory for chatbot data.
-RUN mkdir /botdata
+# RUN mkdir /botdata
 
 # Make scripts runnable
 RUN chmod +x entrypoint.sh

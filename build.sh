@@ -36,46 +36,40 @@ GOSRC=..
 
 pushd ${GOSRC}/chat > /dev/null
 
-# first init static data
-
-# Prepare directory for the new release
-rm -fR ./releases/${version}
-mkdir ./releases/${version}
-
 # Tar on Mac is inflexible about directories. Let's just copy release files to
 # one directory.
-rm -fR ./releases/tmp
-mkdir -p ./releases/tmp/templ
+rm -fR ./releases/
+mkdir -p ./releases/${version}/templ
 
 # Copy templates and database initialization files
-cp ./server/tinode.conf ./releases/tmp
-cp ./server/templ/*.templ ./releases/tmp/templ
-cp ./tinode-db/data.json ./releases/tmp
-cp ./tinode-db/*.jpg ./releases/tmp
-cp ./tinode-db/credentials.sh ./releases/tmp
+cp ./server/tinode.conf ./releases/${version}
+cp ./server/templ/*.templ ./releases/${version}/templ
+cp ./tinode-db/data.json ./releases/${version}
+cp ./tinode-db/*.jpg ./releases/${version}
+cp ./tinode-db/credentials.sh ./releases/${version}
 
 # Create directories for and copy TinodeWeb files.
 if [[ -d ./server/static ]]
 then
-  mkdir -p ./releases/tmp/static/img
-  mkdir ./releases/tmp/static/css
-  mkdir ./releases/tmp/static/audio
-  mkdir ./releases/tmp/static/src
-  mkdir ./releases/tmp/static/umd
+  mkdir -p ./releases/${version}/static/img
+  mkdir ./releases/${version}/static/css
+  mkdir ./releases/${version}/static/audio
+  mkdir ./releases/${version}/static/src
+  mkdir ./releases/${version}/static/umd
 
-  cp ./server/static/img/*.png ./releases/tmp/static/img
-  cp ./server/static/img/*.svg ./releases/tmp/static/img
-  cp ./server/static/img/*.jpeg ./releases/tmp/static/img
-  cp ./server/static/audio/*.m4a ./releases/tmp/static/audio
-  cp ./server/static/css/*.css ./releases/tmp/static/css
-  cp ./server/static/index.html ./releases/tmp/static
-  cp ./server/static/index-dev.html ./releases/tmp/static
-  cp ./server/static/version.js ./releases/tmp/static
-  cp ./server/static/umd/*.js ./releases/tmp/static/umd
-  cp ./server/static/manifest.json ./releases/tmp/static
-  cp ./server/static/service-worker.js ./releases/tmp/static
+  cp ./server/static/img/*.png ./releases/${version}/static/img
+  cp ./server/static/img/*.svg ./releases/${version}/static/img
+  cp ./server/static/img/*.jpeg ./releases/${version}/static/img
+  cp ./server/static/audio/*.m4a ./releases/${version}/static/audio
+  cp ./server/static/css/*.css ./releases/${version}/static/css
+  cp ./server/static/index.html ./releases/${version}/static
+  cp ./server/static/index-dev.html ./releases/${version}/static
+  cp ./server/static/version.js ./releases/${version}/static
+  cp ./server/static/umd/*.js ./releases/${version}/static/umd
+  cp ./server/static/manifest.json ./releases/${version}/static
+  cp ./server/static/service-worker.js ./releases/${version}/static
   # Create empty FCM client-side config.
-  # echo 'const FIREBASE_INIT = {};' > ./releases/tmp/static/firebase-init.js
+  # echo 'const FIREBASE_INIT = {};' > ./releases/${version}/static/firebase-init.js
 else
   echo "TinodeWeb not found, skipping"
   rm -rf ./server/static_tmp
@@ -105,21 +99,21 @@ do
   fi
 
   # Remove possibly existing keygen from previous build.
-  rm -f ./releases/tmp/keygen
-  rm -f ./releases/tmp/keygen.exe
+  rm -f ./releases/${version}/keygen
+  rm -f ./releases/${version}/keygen.exe
 
   # Keygen is database-independent
-  env GOOS="${plat}" GOARCH="${arc}" go build -ldflags "-s -w" -o ./releases/tmp/keygen${ext} ./keygen > /dev/null
+  env GOOS="${plat}" GOARCH="${arc}" go build -ldflags "-s -w" -o ./releases/${version}/keygen${ext} ./keygen > /dev/null
 
   for dbtag in "${dbtags[@]}"
   do
     echo "Building ${dbtag}-${plat}/${arc}..."
 
     # Remove possibly existing binaries from previous build.
-    rm -f ./releases/tmp/tinode
-    rm -f ./releases/tmp/tinode.exe
-    rm -f ./releases/tmp/init-db
-    rm -f ./releases/tmp/init-db.exe
+    rm -f ./releases/${version}/tinode
+    rm -f ./releases/${version}/tinode.exe
+    rm -f ./releases/${version}/init-db
+    rm -f ./releases/${version}/init-db.exe
 
     # Build tinode server and database initializer for RethinkDb and MySQL.
     # For 'alldbs' tag, we compile in all available DB adapters.
@@ -131,30 +125,11 @@ do
 
     env GOOS="${plat}" GOARCH="${arc}" go build \
       -ldflags "-s -w -X main.buildstamp=`git describe --tags`" -tags "${buildtag}" \
-      -o ./releases/tmp/tinode${ext} ./server > /dev/null
+      -o ./releases/${version}/tinode${ext} ./server > /dev/null
     env GOOS="${plat}" GOARCH="${arc}" go build \
-      -ldflags "-s -w" -tags "${buildtag}" -o ./releases/tmp/init-db${ext} ./tinode-db > /dev/null
+      -ldflags "-s -w" -tags "${buildtag}" -o ./releases/${version}/init-db${ext} ./tinode-db > /dev/null
 
-    # Build archive. All platforms but Windows use tar for archiving. Windows uses zip.
-    if [ "$plat" = "windows" ]; then
-      # Remove possibly existing archive.
-      rm -f ./releases/${version}/tinode-${dbtag}."${plat}-${arc}".zip
-      # Generate a new one
-      pushd ./releases/tmp > /dev/null
-      zip -q -r ../${version}/tinode-${dbtag}."${plat}-${arc}".zip ./*
-      popd > /dev/null
-    else
-      plat2=$plat
-      # Rename 'darwin' tp 'mac'
-      if [ "$plat" = "darwin" ]; then
-        plat2=mac
-      fi
 
-      # Remove possibly existing archive.
-      # rm -f ./releases/${version}/tinode-${dbtag}."${plat2}-${arc}".tar.gz
-      # Generate a new one
-      # tar -C ./releases/tmp -zcf ./releases/${version}/tinode-${dbtag}."${plat2}-${arc}".tar.gz .
-    fi
   done
 done
 

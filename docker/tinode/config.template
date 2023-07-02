@@ -48,6 +48,7 @@
 			"min_login_length": 3,
 			"min_password_length": 6
 		},
+		"merc": {},
 		"token": {
 			"expire_in": 1209600,
 			"serial_num": 1,
