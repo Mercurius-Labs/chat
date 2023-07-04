@@ -41,12 +41,14 @@ dbtags=( postgres )
 # Build an images for various DB backends
 for dbtag in "${dbtags[@]}"
 do
-  if [ "$dbtag" == "alldbs" ]; then
-    # For alldbs, container name is tinode/tinode.
-    name="tinode/tinode"
-  else
-    # Otherwise, tinode/tinode-$dbtag.
-    name="tinode/tinode-${dbtag}"
+  if [ -z "$name" ]; then
+    if [ "$dbtag" == "alldbs" ]; then
+      # For alldbs, container name is tinode/tinode.
+      name="tinode/tinode"
+    else
+      # Otherwise, tinode/tinode-$dbtag.
+      name="tinode/tinode-${dbtag}"
+    fi
   fi
   separator=
   rmitags="${name}:${ver[0]}.${ver[1]}.${ver[2]}"
