@@ -9,7 +9,7 @@ for line in $@; do
   eval "$line"
 done
 
-tag=${tag#?}
+#tag=${tag#?}
 
 if [ -z "$tag" ]; then
     echo "Must provide tag as 'tag=v1.2.3'"

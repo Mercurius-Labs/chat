@@ -124,7 +124,7 @@ ENV SERVER_STATUS_PATH=''
 # Install root certificates, they are needed for email validator to work
 # with the TLS SMTP servers like Gmail or Mailjet. Also add bash and grep.
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-RUN apk update && apk add --no-cache ca-certificates bash grep
+RUN apk update && apk add --no-cache ca-certificates bash grep libaio libnsl libc6-compat gcompat && ln -s /lib/libc.so.6 /usr/lib/libresolv.so.2
 
 WORKDIR /opt/tinode
 
@@ -134,7 +134,7 @@ COPY entrypoint.sh .
 
 # Get the desired Tinode build.
 # ADD https://github.com/tinode/chat/releases/download/v$BINVERS/tinode-$TARGET_DB.linux-amd64.tar.gz .
-COPY releases/* .
+COPY releases/ .
 
 # Unpack the Tinode archive.
 #RUN tar -xzf tinode-$TARGET_DB.linux-amd64.tar.gz \
