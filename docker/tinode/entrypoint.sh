@@ -130,18 +130,19 @@ fi
 
 # If sample data was provided, try to find Tino password.
 if [ ! -z "$SAMPLE_DATA" ] ; then
-	grep "usr;tino;" $init_stdout > /botdata/tino-password
+	mkdir -p ./botdata
+	grep "usr;tino;" $init_stdout > ./botdata/tino-password
 fi
 
-if [ -s /botdata/tino-password ] ; then
+if [ -s ./botdata/tino-password ] ; then
 	# Convert Tino's authentication credentials into a cookie file.
 
 	# /botdata/tino-password could be empty if DB was not updated. In such a case the
 	# /botdata/.tn-cookie will not be modified.
-	./credentials.sh /botdata/.tn-cookie < /botdata/tino-password
+	./credentials.sh ./botdata/.tn-cookie < ./botdata/tino-password
 fi
 
-args=("--config=${CONFIG}" "--static_data=$STATIC_DIR" "--cluster_self=$CLUSTER_SELF" "--pprof_url=$PPROF_URL" "-log_flags=date,time,shortfile")
+args=("--config=${CONFIG}" "--static_data=$STATIC_DIR" "--cluster_self=$CLUSTER_SELF" "--pprof_url=$PPROF_URL" "--log_flags=date,time,shortfile")
 
 # Run the tinode server.
 ./tinode "${args[@]}" 2>> /var/log/tinode.log

@@ -356,7 +356,7 @@ func main() {
 			}
 
 			adapter := store.Store.GetAdapter()
-			if err := adapter.AuthAddRecord(user.Uid(), "basic", uname, auth.LevelRoot, passhash, time.Time{}); err != nil {
+			if err := adapter.AuthAddRecord(user.Uid(), "basic", "basic:"+uname, auth.LevelRoot, passhash, time.Time{}); err != nil {
 				store.Users.Delete(user.Uid(), true)
 				log.Fatalln("Failed to create ROOT user, AuthUpdRecord failed:", err)
 			}
