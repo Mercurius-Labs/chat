@@ -373,6 +373,11 @@ func (t *Topic) handleMetaGet(msg *ClientComMessage, asUid types.Uid, asChan boo
 			logs.Warn.Printf("topic[%s] meta.Get.Sub failed: %s", t.name, err)
 		}
 	}
+	if msg.MetaWhat&constMsgMetaRec != 0 {
+		if err := t.replyGetRecUsers(msg.sess, asUid, msg.Get.Rec, msg); err != nil {
+			logs.Warn.Printf("topic[%s] meta.Get.Rec failed: %s", t.name, err)
+		}
+	}
 	if msg.MetaWhat&constMsgMetaData != 0 {
 		if err := t.replyGetData(msg.sess, asUid, asChan, msg.Get.Data, msg); err != nil {
 			logs.Warn.Printf("topic[%s] meta.Get.Data failed: %s", t.name, err)
@@ -671,6 +676,13 @@ func (t *Topic) handleSubscription(msg *ClientComMessage) error {
 	if getWhat&constMsgMetaData != 0 {
 		// Send get.data response as {data} packets
 		if err := t.replyGetData(msg.sess, asUid, asChan, msgsub.Get.Data, msg); err != nil {
+			logs.Warn.Printf("topic[%s] handleSubscription Get.Data failed: %v sid=%s", t.name, err, msg.sess.sid)
+		}
+	}
+
+	if getWhat&constMsgMetaRec != 0 {
+		// Send get.rec response as a separate {meta} packet
+		if err := t.replyGetRecUsers(msg.sess, asUid, msgsub.Get.Data, msg); err != nil {
 			logs.Warn.Printf("topic[%s] handleSubscription Get.Data failed: %v sid=%s", t.name, err, msg.sess.sid)
 		}
 	}
@@ -2763,6 +2775,43 @@ func (t *Topic) replyGetData(sess *Session, asUid types.Uid, asChan bool, req *M
 			map[string]any{"what": "data", "count": count}))
 	}
 
+	return nil
+}
+
+func (t *Topic) replyGetRecUsers(sess *Session, asUid types.Uid, req *MsgGetOpts, msg *ClientComMessage) error {
+	now := types.TimeNow()
+	if t.name != "mercGrp" {
+		sess.queueOut(ErrOperationNotAllowedReply(msg, now))
+		return errors.New("invalid topic category for getting credentials")
+	}
+
+	limit := 1
+	if req != nil && req.Limit > 0 {
+		limit = req.Limit
+	}
+
+	recUsers := make([]string, 0, limit)
+	for uid, userData := range t.perUser {
+		if uid == asUid || userData.online <= 0 {
+			continue
+		}
+		recUsers = append(recUsers, uid.UserId())
+		if len(recUsers) >= limit {
+			break
+		}
+	}
+
+	if len(recUsers) == 0 {
+		sess.queueOut(NoContentParamsReply(msg, now, map[string]string{"what": "rec"}))
+	} else {
+		sess.queueOut(&ServerComMessage{
+			Meta: &MsgServerMeta{
+				Id: msg.Id, Topic: t.original(asUid),
+				Timestamp: &now,
+				Rec:       recUsers,
+			},
+		})
+	}
 	return nil
 }
 

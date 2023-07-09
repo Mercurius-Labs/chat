@@ -41,9 +41,14 @@ class User(threading.Thread):
         self.ws.send(json.dumps(msg))
         return msg[typ]["id"]
     
-    def send_wait(self, msg: dict):
+    def send_wait(self, msg: dict, check: dict=None):
         id = self.send(msg)
-        self.await_msg({"ctrl": {"id": id}})
+        if check is None:
+            check = {"ctrl": {"id": id}}
+        else:
+            typ = [k for k in check.keys()][0]
+            check[typ]["id"] = id
+        return self.await_msg(check)
 
     def await_msg(self, check: dict) -> dict:
         def sub_contains(f: dict,  e: dict) -> bool:
@@ -116,9 +121,14 @@ def user_p2p_reject():
 
 
 def user_send_mercGrp():
-    user_1.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}}, "what": "data sub"}})
+    user_1.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}, "what": "sub"}}})
+    user_2.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}, "what": "sub"}}})
+    user_1.send_wait({"get": {"topic": "mercGrp", "what": "rec", "rec": {"limit": 10}}}, {"meta": {}})
+    user_1.send_wait({"get": {"topic": "mercGrp", "what": "rec", "rec": {"limit": 2}}}, {"meta": {}})
+    user_2.send_wait({"get": {"topic": "mercGrp", "what": "rec"}}, {"meta": {}})
     user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp"}})
     user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 2"}})
+    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 3"}})
 
 user_send_mercGrp()
 

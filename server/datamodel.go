@@ -46,6 +46,8 @@ type MsgGetQuery struct {
 	Data *MsgGetOpts `json:"data,omitempty"`
 	// Parameters of "del" request: Since, Before, Limit.
 	Del *MsgGetOpts `json:"del,omitempty"`
+	// recommend users: Limit
+	Rec *MsgGetOpts `json:"rec,omitempty"`
 }
 
 // MsgSetSub is a payload in set.sub request to update current subscription or invite another user, {sub.what} == "sub".
@@ -186,6 +188,7 @@ const (
 	constMsgMetaTags
 	constMsgMetaDel
 	constMsgMetaCred
+	constMsgMetaRec
 )
 
 const (
@@ -213,6 +216,8 @@ func parseMsgClientMeta(params string) int {
 			bits |= constMsgMetaDel
 		case "cred":
 			bits |= constMsgMetaCred
+		case "rec":
+			bits |= constMsgMetaRec
 		default:
 			// ignore unknown
 		}
@@ -715,6 +720,8 @@ type MsgServerMeta struct {
 	Tags []string `json:"tags,omitempty"`
 	// Account credentials, 'me' only.
 	Cred []*MsgCredServer `json:"cred,omitempty"`
+	// Recommend userIDs
+	Rec []string `json:"rec,omitempty"`
 }
 
 // Deep-shallow copy of meta message. Deep copy of Id and Topic fields, shallow copy of payload.
