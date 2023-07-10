@@ -680,13 +680,6 @@ func (t *Topic) handleSubscription(msg *ClientComMessage) error {
 		}
 	}
 
-	if getWhat&constMsgMetaRec != 0 {
-		// Send get.rec response as a separate {meta} packet
-		if err := t.replyGetRecUsers(msg.sess, asUid, msgsub.Get.Data, msg); err != nil {
-			logs.Warn.Printf("topic[%s] handleSubscription Get.Data failed: %v sid=%s", t.name, err, msg.sess.sid)
-		}
-	}
-
 	if getWhat&constMsgMetaDel != 0 {
 		// Send get.del response as a separate {meta} packet
 		if err := t.replyGetDel(msg.sess, asUid, msgsub.Get.Del, msg); err != nil {

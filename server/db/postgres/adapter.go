@@ -23,6 +23,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/tinode/chat/server/auth"
 	"github.com/tinode/chat/server/db/common"
+	"github.com/tinode/chat/server/logs"
 	"github.com/tinode/chat/server/store"
 	t "github.com/tinode/chat/server/store/types"
 )
@@ -97,6 +98,20 @@ func (a *adapter) getContextForTx() (context.Context, context.CancelFunc) {
 	return context.Background(), nil
 }
 
+func printPostgresLog(ctx context.Context, level pgx.LogLevel, msg string, data map[string]interface{}) {
+	if level <= pgx.LogLevelInfo {
+		sql, ok := data["sql"]
+		if !ok {
+			return
+		}
+		logs.Info.Println(sql)
+	} else if level <= pgx.LogLevelWarn {
+		logs.Warn.Println(data)
+	} else if level <= pgx.LogLevelError {
+		logs.Err.Println(data)
+	}
+}
+
 // Open initializes database session
 func (a *adapter) Open(jsonconfig json.RawMessage) error {
 	if a.db != nil {
@@ -139,6 +154,7 @@ func (a *adapter) Open(jsonconfig json.RawMessage) error {
 	if a.poolConfig, err = pgxpool.ParseConfig(a.dsn); err != nil {
 		return errors.New("postgres adapter failed to parse DSN: " + err.Error())
 	}
+	a.poolConfig.ConnConfig.Logger = (pgx.LoggerFunc)(printPostgresLog)
 
 	// ConnectConfig creates a new Pool and immediately establishes one connection.
 	a.db, err = pgxpool.ConnectConfig(ctx, a.poolConfig)
