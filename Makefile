@@ -5,8 +5,12 @@ DOCKER_IMAGE = asia-east2-docker.pkg.dev/crack-photon-385304/merc/chat
 docker-build:
 	./docker-build.sh tag=$(APP_VERSION) name=$(DOCKER_IMAGE)
 
+tag:
+	docker tag $(DOCKER_IMAGE):$(APP_VERSION)  $(DOCKER_IMAGE):latest
+
 release:
 	docker push $(DOCKER_IMAGE):$(APP_VERSION)
+	docker push $(DOCKER_IMAGE):latest
 
 init:
 	gcloud auth configure-docker asia-east2-docker.pkg.dev
