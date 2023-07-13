@@ -23,7 +23,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/tinode/chat/server/auth"
 	"github.com/tinode/chat/server/db/common"
-	"github.com/tinode/chat/server/logs"
 	"github.com/tinode/chat/server/store"
 	t "github.com/tinode/chat/server/store/types"
 )
@@ -99,17 +98,17 @@ func (a *adapter) getContextForTx() (context.Context, context.CancelFunc) {
 }
 
 func printPostgresLog(ctx context.Context, level pgx.LogLevel, msg string, data map[string]interface{}) {
-	if level <= pgx.LogLevelInfo {
-		sql, ok := data["sql"]
-		if !ok {
-			return
-		}
-		logs.Info.Println(sql)
-	} else if level <= pgx.LogLevelWarn {
-		logs.Warn.Println(data)
-	} else if level <= pgx.LogLevelError {
-		logs.Err.Println(data)
-	}
+	// if level <= pgx.LogLevelInfo {
+	// 	sql, ok := data["sql"]
+	// 	if !ok {
+	// 		return
+	// 	}
+	// 	logs.Info.Println(sql)
+	// } else if level <= pgx.LogLevelWarn {
+	// 	logs.Warn.Println(data)
+	// } else if level <= pgx.LogLevelError {
+	// 	logs.Err.Println(data)
+	// }
 }
 
 // Open initializes database session
