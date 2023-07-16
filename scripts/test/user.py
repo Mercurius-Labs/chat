@@ -59,6 +59,8 @@ class User(threading.Thread):
                 if isinstance(v, dict):
                     if not sub_contains(f[k], v):
                         return False
+                elif isinstance(v, list) and len(v) == 0:
+                    pass
                 elif f[k] != v:
                     #print(f'value is not match')
                     return False
@@ -132,6 +134,8 @@ def user_send_mercGrp():
     seqID = msg["ctrl"]["params"]['seq']
     user_2.send({"note": {"topic": "mercGrp", "seq": seqID, "what": "like"}})
     user_1.await_msg({'info': {'from': user_2.user_id, 'what': 'like'}})
+
+    user_1.send_wait({"get": {"topic": "me", "what": "sub"}}, {"meta": {"sub": []}})
 
 user_send_mercGrp()
 

@@ -77,6 +77,8 @@ func (a authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Rec
 				Auth: types.ModeJoin | types.ModeApprove,
 				Anon: types.ModeNone,
 			},
+			Public: map[string]string{"fn": mercID},
+			Tags:   []string{"merc:" + mercID},
 		}
 		if _, err := store.Users.Create(user, nil); err != nil {
 			logs.Warn.Println("merc.Authenticate: user state check failed", user.Uid(), err)
