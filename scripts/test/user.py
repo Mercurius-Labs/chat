@@ -128,7 +128,10 @@ def user_send_mercGrp():
     user_2.send_wait({"get": {"topic": "mercGrp", "what": "rec"}}, {"meta": {}})
     user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp"}})
     user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 2"}})
-    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 3"}})
+    msg = user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 3"}})
+    seqID = msg["ctrl"]["params"]['seq']
+    user_2.send({"note": {"topic": "mercGrp", "seq": seqID, "what": "like"}})
+    user_1.await_msg({'info': {'from': user_2.user_id, 'what': 'like'}})
 
 user_send_mercGrp()
 

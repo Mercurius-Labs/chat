@@ -1236,7 +1236,6 @@ func (s *Session) note(msg *ClientComMessage) {
 	// Expand topic name and validate request.
 	var resp *ServerComMessage
 	msg.RcptTo, resp = s.expandTopicName(msg)
-	logs.Info.Printf("note rcptTo=%s", msg.RcptTo)
 
 	if resp != nil {
 		// Silently ignoring the message
@@ -1259,7 +1258,7 @@ func (s *Session) note(msg *ClientComMessage) {
 			return
 		}
 		fallthrough
-	case "read", "recv":
+	case "read", "recv", "like":
 		if msg.Note.SeqId <= 0 {
 			return
 		}

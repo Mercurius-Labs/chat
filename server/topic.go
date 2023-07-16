@@ -1113,6 +1113,7 @@ func (t *Topic) handleNoteBroadcast(msg *ClientComMessage) {
 
 	if msg.Note.SeqId > t.lastID {
 		// Drop bogus read notification
+		logs.Info.Printf("drop invalid note info, seqID=%d > topic.lastID=%d", msg.Note.SeqId, t.lastID)
 		return
 	}
 
