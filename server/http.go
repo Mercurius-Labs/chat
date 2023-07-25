@@ -310,15 +310,15 @@ func getAPIKey(req *http.Request) string {
 	return apikey
 }
 
-func getAuthToken(req *http.Request) string {
-	token := req.Header.Get("X-Tinode-token")
+func getMercUid(req *http.Request) string {
+	token := req.Header.Get("X-UID")
 	if token != "" {
 		return token
 	}
-	if token = req.URL.Query().Get("token"); token != "" {
+	if token = req.URL.Query().Get("uid"); token != "" {
 		return token
 	}
-	if c, err := req.Cookie("token"); err == nil {
+	if c, err := req.Cookie("uid"); err == nil {
 		token = c.Value
 	}
 

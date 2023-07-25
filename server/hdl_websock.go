@@ -201,8 +201,8 @@ func serveWebSocket(wrt http.ResponseWriter, req *http.Request) {
 		sess.remoteAddr = req.RemoteAddr
 	}
 
-	authToken := getAuthToken(req)
-	sess.authToken = authToken
+	mercUID := getMercUid(req)
+	sess.mercUserID = mercUID
 
 	logs.Info.Println("ws: session started", sess.sid, sess.remoteAddr, count)
 

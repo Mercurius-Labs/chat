@@ -107,8 +107,8 @@ type Session struct {
 	// Authentication level - NONE (unset), ANON, AUTH, ROOT.
 	authLvl auth.Level
 
-	// 已经验证好的token
-	authToken string
+	// merc传入的用户ID
+	mercUserID string
 
 	// Time when the long polling session was last refreshed
 	lastTouched time.Time
@@ -914,6 +914,20 @@ func (s *Session) login(msg *ClientComMessage) {
 			s.queueOut(InfoAuthReset(msg.Id, msg.Timestamp))
 		}
 		return
+	}
+
+	if msg.Login.Scheme == "merc" {
+		secret := string(msg.Login.Secret)
+		if len(s.mercUserID) > 0 && len(secret) == 0 {
+			secret = s.mercUserID
+		}
+		if len(s.mercUserID) == 0 && len(msg.Login.Secret) == 0 {
+			s.queueOut(ErrAuthRequiredReply(msg, msg.Timestamp))
+		}
+		if len(s.mercUserID) > 0 && secret != s.mercUserID {
+			s.queueOut(ErrAuthFailed(msg.Id, "", msg.Timestamp, msg.Timestamp))
+		}
+		msg.Login.Secret = []byte(secret)
 	}
 
 	if !s.uid.IsZero() {
