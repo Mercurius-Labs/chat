@@ -6,8 +6,12 @@ import queue
 import threading
 import base64
 import time
+import requests
 
+use_agw = True
 ws_url='ws://localhost:6060/v0/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
+if use_agw:
+    ws_url='ws://localhost:8000/v1/chat/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
 
 
 def on_open(ws: websocket.WebSocketApp):
@@ -20,7 +24,10 @@ class User(threading.Thread):
     def __init__(self, user_name):
         threading.Thread.__init__(self)
         self.q = queue.Queue(10)
-        header = {"x-uid": user_name}
+        header = {'x-uid': user_name}
+        if use_agw:
+            resp = requests.post('http://localhost:8000/v1/user/login', json={'address': '0xxxxx', 'sign_hex': '0x21', 'type': 'metamask'})
+            header = {'Sec-WebSocket-Protocol': resp.json()['data']['token']}
         self.ws = websocket.WebSocketApp(ws_url, on_message=self.on_message, on_open=on_open, on_close=on_close, header=header)
         self.user_name = user_name
         self.next_id = 1000
@@ -94,7 +101,7 @@ user_1.user_id = login['ctrl']['params']['user']
 user_1.send_wait({"sub":{"topic":"me", "get":{"what": "sub"}}})
 
 user_2.send_wait({"hi":{"ver":"0.22.8","ua":"TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8","lang":"zh-CN","platf":"web"}})
-user_2.send({"login":{"scheme":"merc","secret":b64(user_2.user_name),"cred":[]}})
+user_2.send({"login":{"scheme":"merc","secret":"","cred":[]}})
 login = user_2.await_msg({"ctrl":{}})
 user_2.user_id = login['ctrl']['params']['user']
 user_2.send_wait({"sub":{"topic":"me", "get":{"what": "sub"}}})
@@ -132,7 +139,7 @@ def user_send_mercGrp():
     user_1.send_wait({"get": {"topic": "mercGrp", "what": "rec", "rec": {"limit": 10}}}, {"meta": {}})
     user_1.send_wait({"get": {"topic": "mercGrp", "what": "rec", "rec": {"limit": 2}}}, {"meta": {}})
     user_2.send_wait({"get": {"topic": "mercGrp", "what": "rec"}}, {"meta": {}})
-    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp"}})
+    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp", "head": {"nickname": "hahha", "avatar": "xxx"}}})
     user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 2"}})
     msg = user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 3"}})
     seqID = msg["ctrl"]["params"]['seq']
@@ -141,7 +148,7 @@ def user_send_mercGrp():
 
     user_1.send_wait({"get": {"topic": "me", "what": "sub"}}, {"meta": {"sub": []}})
 
-user_p2p_approve()
+user_send_mercGrp()
 
 user_1.join()
 user_2.join()
