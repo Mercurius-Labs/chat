@@ -204,7 +204,7 @@ func serveWebSocket(wrt http.ResponseWriter, req *http.Request) {
 	mercUID := getMercUid(req)
 	sess.mercUserID = mercUID
 
-	logs.Info.Println("ws: session started", sess.sid, sess.remoteAddr, count)
+	logs.Info.Println("ws: session started", sess.sid, sess.remoteAddr, count, "uid=", mercUID)
 
 	// Do work in goroutines to return from serveWebSocket() to release file pointers.
 	// Otherwise "too many open files" will happen.

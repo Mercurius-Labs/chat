@@ -311,12 +311,15 @@ func getAPIKey(req *http.Request) string {
 }
 
 func getMercUid(req *http.Request) string {
-	token := req.Header.Get("X-UID")
+	token := req.Header.Get("x-uid")
 	if token != "" {
 		return token
 	}
 	if token = req.URL.Query().Get("uid"); token != "" {
 		return token
+	}
+	if uid, ok := req.Context().Value("x-uid").(string); ok && uid != "" {
+		return uid
 	}
 	if c, err := req.Cookie("uid"); err == nil {
 		token = c.Value
