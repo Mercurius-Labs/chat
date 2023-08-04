@@ -181,6 +181,15 @@ func serveWebSocket(wrt http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+		EnableCompression: globals.wsCompression,
+		Subprotocols:      []string{req.Header.Get("Sec-WebSocket-Protocol")},
+	}
 	ws, err := upgrader.Upgrade(wrt, req, nil)
 	if _, ok := err.(websocket.HandshakeError); ok {
 		logs.Err.Println("ws: Not a websocket handshake")
