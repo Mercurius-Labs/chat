@@ -70,8 +70,9 @@ func (ss *SessionStore) NewSession(conn any, sid string) (*Session, int) {
 
 	s.subs = make(map[string]*Subscription)
 	s.send = make(chan any, sendQueueLimit+32) // buffered
-	s.stop = make(chan any, 1)                 // Buffered by 1 just to make it non-blocking
-	s.detach = make(chan string, 64)           // buffered
+	s.lobbySend = make(chan *ServerComMessage, sendQueueLimit+32)
+	s.stop = make(chan any, 1)       // Buffered by 1 just to make it non-blocking
+	s.detach = make(chan string, 64) // buffered
 
 	s.bkgTimer = time.NewTimer(time.Hour)
 	s.bkgTimer.Stop()

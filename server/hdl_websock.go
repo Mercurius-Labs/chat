@@ -82,6 +82,7 @@ func (sess *Session) sendMessage(msg any) bool {
 
 func (sess *Session) writeLoop() {
 	ticker := time.NewTicker(pingPeriod)
+	lobbyTick := time.NewTicker(1 * time.Second)
 
 	defer func() {
 		ticker.Stop()
@@ -112,6 +113,14 @@ func (sess *Session) writeLoop() {
 			default: // serialized message
 				if !sess.sendMessage(v) {
 					return
+				}
+			}
+		case <-lobbyTick.C:
+			if len(sess.lobbySend) > 0 {
+				select {
+				case msg := <-sess.lobbySend:
+					sess.trySend(msg)
+				default:
 				}
 			}
 

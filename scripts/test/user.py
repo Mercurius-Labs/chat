@@ -8,7 +8,7 @@ import base64
 import time
 import requests
 
-use_agw = True
+use_agw = False
 ws_url='ws://localhost:6060/v0/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
 if use_agw:
     ws_url='ws://localhost:8000/v1/chat/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
@@ -38,14 +38,14 @@ class User(threading.Thread):
 
     def on_message(self, ws: websocket.WebSocketApp, msg):
         msg = json.loads(msg)
-        print(f'{self.user_name}({self.user_id}) recv: ', json.dumps(msg))
+        print(f'[{time.time()}]{self.user_name}({self.user_id}) recv: ', json.dumps(msg))
         self.q.put(msg)
 
     def send(self, msg: dict) -> str:
         self.next_id += 1
         typ = [k for k in msg.keys()][0]
         msg[typ]["id"] = str(self.next_id)
-        print(f'{self.user_name}({self.user_id}) send: ', json.dumps(msg))
+        print(f'[{time.time()}]{self.user_name}({self.user_id}) send: ', json.dumps(msg))
         self.ws.send(json.dumps(msg))
         return msg[typ]["id"]
     
@@ -140,7 +140,9 @@ def user_send_mercGrp():
     user_1.send_wait({"get": {"topic": "mercGrp", "what": "rec", "rec": {"limit": 2}}}, {"meta": {}})
     user_2.send_wait({"get": {"topic": "mercGrp", "what": "rec"}}, {"meta": {}})
     user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp", "head": {"nickname": "hahha", "avatar": "xxx"}}})
-    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 2"}})
+    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "this message 1"}})
+    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "this message 2"}})
+    user_2.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "this message 34"}})
     msg = user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 3"}})
     seqID = msg["ctrl"]["params"]['seq']
     user_2.send({"note": {"topic": "mercGrp", "seq": seqID, "what": "like"}})

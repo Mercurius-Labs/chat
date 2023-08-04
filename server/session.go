@@ -137,7 +137,8 @@ type Session struct {
 
 	// Outbound mesages, buffered.
 	// The content must be serialized in format suitable for the session.
-	send chan any
+	send      chan any
+	lobbySend chan *ServerComMessage
 
 	// Channel for shutting down the session, buffer 1.
 	// Content in the same format as for 'send'
@@ -345,6 +346,21 @@ func (s *Session) queueOut(msg *ServerComMessage) bool {
 		}
 	}
 
+	if msg.Data != nil && msg.Data.Topic == "mercGrp" {
+		select {
+		case s.lobbySend <- msg:
+			return true
+		default:
+			// Never block here since it may also block the topic's run() goroutine.
+			logs.Err.Println("s.queueOut: session's lobbySend queue full", s.sid)
+			return false
+		}
+	}
+
+	return s.trySend(msg)
+}
+
+func (s *Session) trySend(msg *ServerComMessage) bool {
 	select {
 	case s.send <- msg:
 	default:
@@ -408,6 +424,9 @@ func (s *Session) purgeChannels() {
 	}
 	for len(s.detach) > 0 {
 		<-s.detach
+	}
+	for len(s.lobbySend) > 0 {
+		<-s.lobbySend
 	}
 }
 
