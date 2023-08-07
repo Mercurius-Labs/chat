@@ -8,17 +8,23 @@ import base64
 import time
 import requests
 
-use_agw = False
-ws_url='ws://localhost:6060/v0/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
-if use_agw:
-    ws_url='ws://localhost:8000/v1/chat/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
+use_agw = True
+remoteHost = 'localhost:6060'
+token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTM5NjM5MTEsImlhdCI6MTY5MTM3MTkxMSwicGF5bG9hZCI6IntcInVzZXJfaWRcIjpcIjEyMzQ1Njc4OTBcIixcIm5pY2tuYW1lXCI6XCJ0ZXN0MTIzNDU2Nzg5MFwifSJ9.PIC0cVdH0qogRGP8U7g24KusCLllQsZVjhgsiaDXZzs'
 
+ws_url=f'ws://{remoteHost}/v0/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
+if use_agw:
+    remoteHost = '34.87.176.129:8000'
+    ws_url=f'ws://{remoteHost}/v1/chat/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
+if not token and use_agw:
+    resp = requests.post(f'http://{remoteHost}/v1/user/login', json={'address': '0xxxxx', 'sign_hex': '0x21', 'type': 'metamask'})
+    token = resp.json()['data']['token']
 
 def on_open(ws: websocket.WebSocketApp):
     print('open socket')
 
 def on_close(ws: websocket.WebSocketApp):
-    print('open socket')
+    print('close socket')
 
 class User(threading.Thread):
     def __init__(self, user_name):
@@ -26,8 +32,7 @@ class User(threading.Thread):
         self.q = queue.Queue(10)
         header = {'x-uid': user_name}
         if use_agw:
-            resp = requests.post('http://localhost:8000/v1/user/login', json={'address': '0xxxxx', 'sign_hex': '0x21', 'type': 'metamask'})
-            header = {'Sec-WebSocket-Protocol': resp.json()['data']['token']}
+            header = {'Sec-WebSocket-Protocol': token}
         self.ws = websocket.WebSocketApp(ws_url, on_message=self.on_message, on_open=on_open, on_close=on_close, header=header)
         self.user_name = user_name
         self.next_id = 1000
@@ -57,6 +62,13 @@ class User(threading.Thread):
             typ = [k for k in check.keys()][0]
             check[typ]["id"] = id
         return self.await_msg(check)
+    
+    def login(self, ua: str):
+        self.send_wait({"hi":{"ver":"0.22.8","ua":ua,"lang":"zh-CN","platf":"web"}})
+        self.send({"login":{"scheme":"merc","secret":"","cred":[]}})
+        loginResp = self.await_msg({"ctrl":{}})
+        self.user_id = loginResp['ctrl']['params']['user']
+        self.send_wait({"sub":{"topic":"me", "get":{"what": "sub"}}})
 
     def await_msg(self, check: dict) -> dict:
         def sub_contains(f: dict,  e: dict) -> bool:
@@ -87,70 +99,74 @@ class User(threading.Thread):
 def b64(s: str) -> str:
     return base64.b64encode(s.encode()).decode()
 
-now = int(time.time())
-user_1 = User(f"user_1_{now}")
-user_2 = User(f"user_2_{now}")
-user_1.start()
-user_2.start()
-time.sleep(1)
+def test_two_user():
+    now = int(time.time())
+    user_1 = User(f"user_1_{now}")
+    user_2 = User(f"user_2_{now}")
+    user_1.start()
+    user_2.start()
+    time.sleep(1)
 
-user_1.send_wait({"hi":{"ver":"0.22.8","ua":"TinodeWeb/0.22.8 (Edge/114.0; Win32); tinodejs/0.22.8","lang":"zh-CN","platf":"web"}})
-user_1.send({"login":{"scheme":"merc","secret":"","cred":[]}})
-login = user_1.await_msg({"ctrl":{}})
-user_1.user_id = login['ctrl']['params']['user']
-user_1.send_wait({"sub":{"topic":"me", "get":{"what": "sub"}}})
-
-user_2.send_wait({"hi":{"ver":"0.22.8","ua":"TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8","lang":"zh-CN","platf":"web"}})
-user_2.send({"login":{"scheme":"merc","secret":"","cred":[]}})
-login = user_2.await_msg({"ctrl":{}})
-user_2.user_id = login['ctrl']['params']['user']
-user_2.send_wait({"sub":{"topic":"me", "get":{"what": "sub"}}})
+    user_1.login("TinodeWeb/0.22.8 (Edge/114.0; Win32); tinodejs/0.22.8")
+    user_2.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
 
 
-def user_p2p_approve():
-    # user2 try to sub user1
-    user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-    user_1.await_msg({'pres': {"what": "acs"}})
-    user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-    user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"JRWSA"}}})
+    def user_p2p_approve():
+        # user2 try to sub user1
+        user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+        user_1.await_msg({'pres': {"what": "acs"}})
+        user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+        user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"JRWSA"}}})
 
-    # send msg
-    user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
-    user_1.send_wait({"pub": {"topic": user_2.user_id, "content": "hello with two", "noecho": True}})
+        # send msg
+        user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
+        user_1.send_wait({"pub": {"topic": user_2.user_id, "content": "hello with two", "noecho": True}})
 
-    # send sys msg
-    user_1.send_wait({"pub": {"topic": "sys", "content": {"what":"rating", "rating": "good", "comment": "very"}, "noecho": True}})
+        # send sys msg
+        user_1.send_wait({"pub": {"topic": "sys", "content": {"what":"rating", "rating": "good", "comment": "very"}, "noecho": True}})
 
-def user_p2p_reject():
-    # user2 try to sub user1
-    user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-    user_1.await_msg({'pres': {"what": "acs"}})
-    user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-    user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"N"}}})
-    user_2.await_msg({'pres': {'what': 'acs'}})
+    def user_p2p_reject():
+        # user2 try to sub user1
+        user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+        user_1.await_msg({'pres': {"what": "acs"}})
+        user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+        user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"N"}}})
+        user_2.await_msg({'pres': {'what': 'acs'}})
 
-    # send msg
-    user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
+        # send msg
+        user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
 
 
-def user_send_mercGrp():
-    user_1.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}, "what": "sub"}}})
-    user_2.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}, "what": "sub"}}})
-    user_1.send_wait({"get": {"topic": "mercGrp", "what": "rec", "rec": {"limit": 10}}}, {"meta": {}})
-    user_1.send_wait({"get": {"topic": "mercGrp", "what": "rec", "rec": {"limit": 2}}}, {"meta": {}})
-    user_2.send_wait({"get": {"topic": "mercGrp", "what": "rec"}}, {"meta": {}})
-    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp", "head": {"nickname": "hahha", "avatar": "xxx"}}})
-    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "this message 1"}})
-    user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "this message 2"}})
-    user_2.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "this message 34"}})
-    msg = user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 3"}})
-    seqID = msg["ctrl"]["params"]['seq']
-    user_2.send({"note": {"topic": "mercGrp", "seq": seqID, "what": "like"}})
-    user_1.await_msg({'info': {'from': user_2.user_id, 'what': 'like'}})
+    def user_send_mercGrp():
+        user_1.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}, "what": "sub"}}})
+        user_2.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}, "what": "sub"}}})
+        user_1.send_wait({"get": {"topic": "mercGrp", "what": "rec", "rec": {"limit": 10}}}, {"meta": {}})
+        user_1.send_wait({"get": {"topic": "mercGrp", "what": "rec", "rec": {"limit": 2}}}, {"meta": {}})
+        user_2.send_wait({"get": {"topic": "mercGrp", "what": "rec"}}, {"meta": {}})
+        user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp", "head": {"nickname": "hahha", "avatar": "xxx"}}})
+        user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "this message 1"}})
+        user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "this message 2"}})
+        user_2.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "this message 34"}})
+        msg = user_1.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp 3"}})
+        seqID = msg["ctrl"]["params"]['seq']
+        user_2.send({"note": {"topic": "mercGrp", "seq": seqID, "what": "like"}})
+        user_1.await_msg({'info': {'from': user_2.user_id, 'what': 'like'}})
 
-    user_1.send_wait({"get": {"topic": "me", "what": "sub"}}, {"meta": {"sub": []}})
+        user_1.send_wait({"get": {"topic": "me", "what": "sub"}}, {"meta": {"sub": []}})
 
-user_send_mercGrp()
+    user_send_mercGrp()
 
-user_1.join()
-user_2.join()
+    user_1.join()
+    user_2.join()
+
+def test_with_frontend():
+    user = User(f"user_with_frontend")
+    user.start()
+    time.sleep(1)
+
+    user.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
+    user.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}, "what": "data"}}})
+    user.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp", "head": {"nickname": "user_with_frontend", "avatar": "http://unknown.com/unknown.jpg"}}})
+    user.join()
+
+test_with_frontend()
