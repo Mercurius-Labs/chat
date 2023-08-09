@@ -936,17 +936,19 @@ func (s *Session) login(msg *ClientComMessage) {
 	}
 
 	if msg.Login.Scheme == "merc" {
-		secret := string(msg.Login.Secret)
-		if len(s.mercUserID) > 0 && len(secret) == 0 {
-			secret = s.mercUserID
+		userID := string(msg.Login.Secret)
+		if len(s.mercUserID) > 0 && len(userID) == 0 {
+			userID = s.mercUserID
 		}
 		if len(s.mercUserID) == 0 && len(msg.Login.Secret) == 0 {
 			s.queueOut(ErrAuthRequiredReply(msg, msg.Timestamp))
+			return
 		}
-		if len(s.mercUserID) > 0 && secret != s.mercUserID {
+		if len(s.mercUserID) > 0 && userID != s.mercUserID {
 			s.queueOut(ErrAuthFailed(msg.Id, "", msg.Timestamp, msg.Timestamp))
+			return
 		}
-		msg.Login.Secret = []byte(secret)
+		msg.Login.Secret, _ = json.Marshal(map[string]any{"uid": userID, "public": msg.Login.Desc.Public})
 	}
 
 	if !s.uid.IsZero() {

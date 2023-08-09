@@ -62,7 +62,15 @@ func (authenticator) UpdateRecord(rec *auth.Rec, secret []byte, remoteAddr strin
 
 // Authenticate is not supported. This authenticator is used only at account creation time.
 func (a authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Rec, []byte, error) {
-	mercID := string(secret)
+	var userInfo = make(map[string]any)
+	if err := json.Unmarshal(secret, &userInfo); err != nil {
+		return nil, nil, err
+	}
+	mercID, _ := userInfo["uid"].(string)
+	if mercID == "" {
+		return nil, nil, types.ErrCredentials
+	}
+	secret = []byte(mercID)
 	uid, authLvl, passhash, expires, err := store.Users.GetAuthUniqueRecord(realName, mercID)
 	if err != nil {
 		logs.Err.Printf("merc.Authenticate: GetAuthUniqueRecord failed, mercID=%s, err=%v", mercID, err)
@@ -77,10 +85,10 @@ func (a authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Rec
 				Auth: types.ModeJoin | types.ModeApprove,
 				Anon: types.ModeNone,
 			},
-			Public: map[string]string{"fn": mercID},
+			Public: userInfo["public"],
 			Tags:   []string{"merc:" + mercID},
 		}
-		if _, err := store.Users.Create(user, nil); err != nil {
+		if _, err := store.Users.Create(user, map[string]any{"uid": mercID}); err != nil {
 			logs.Warn.Println("merc.Authenticate: user state check failed", user.Uid(), err)
 			return nil, nil, err
 		}
@@ -95,6 +103,11 @@ func (a authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Rec
 			return nil, nil, err
 		}
 		return rec, nil, nil
+	} else {
+		// this is not affect if failed
+		if e := store.Users.Update(uid, map[string]interface{}{"public": userInfo["public"]}); e != nil {
+			logs.Warn.Println("update user: failed to update `public`", e)
+		}
 	}
 
 	if !expires.IsZero() && expires.Before(time.Now()) {

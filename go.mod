@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	firebase.google.com/go v3.13.0+incompatible
+	github.com/VictoriaMetrics/fastcache v1.12.1
 	github.com/aws/aws-sdk-go v1.44.204
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/golang/mock v1.6.0

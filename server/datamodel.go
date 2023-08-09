@@ -156,6 +156,8 @@ type MsgClientLogin struct {
 	Scheme string `json:"scheme,omitempty"`
 	// Shared secret
 	Secret []byte `json:"secret"`
+	// User initialization data  for scheme=='merc'
+	Desc *MsgSetDesc `json:"desc,omitempty"`
 	// Credntials being verified (email or phone or captcha etc.)
 	Cred []MsgCredClient `json:"cred,omitempty"`
 }

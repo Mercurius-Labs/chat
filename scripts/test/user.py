@@ -8,13 +8,14 @@ import base64
 import time
 import requests
 
-use_agw = True
+use_agw = False
 remoteHost = 'localhost:6060'
 token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTM5NjM5MTEsImlhdCI6MTY5MTM3MTkxMSwicGF5bG9hZCI6IntcInVzZXJfaWRcIjpcIjEyMzQ1Njc4OTBcIixcIm5pY2tuYW1lXCI6XCJ0ZXN0MTIzNDU2Nzg5MFwifSJ9.PIC0cVdH0qogRGP8U7g24KusCLllQsZVjhgsiaDXZzs'
 
 ws_url=f'ws://{remoteHost}/v0/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
 if use_agw:
     remoteHost = '34.87.176.129:8000'
+    remoteHost = 'localhost:8000'
     ws_url=f'ws://{remoteHost}/v1/chat/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
 if not token and use_agw:
     resp = requests.post(f'http://{remoteHost}/v1/user/login', json={'address': '0xxxxx', 'sign_hex': '0x21', 'type': 'metamask'})
@@ -65,7 +66,8 @@ class User(threading.Thread):
     
     def login(self, ua: str):
         self.send_wait({"hi":{"ver":"0.22.8","ua":ua,"lang":"zh-CN","platf":"web"}})
-        self.send({"login":{"scheme":"merc","secret":"","cred":[]}})
+        self.send({"login":{"scheme":"merc","secret":"","cred":[], 
+                            "desc": {"public": {"avatar": f'http://unknown.com/{self.user_name}_yyy.jpg', "nickname": self.user_name}}}})
         loginResp = self.await_msg({"ctrl":{}})
         self.user_id = loginResp['ctrl']['params']['user']
         self.send_wait({"sub":{"topic":"me", "get":{"what": "sub"}}})
@@ -101,8 +103,8 @@ def b64(s: str) -> str:
 
 def test_two_user():
     now = int(time.time())
-    user_1 = User(f"user_1_{now}")
-    user_2 = User(f"user_2_{now}")
+    user_1 = User(f"user_1_h3")
+    user_2 = User(f"user_2_h4")
     user_1.start()
     user_2.start()
     time.sleep(1)
@@ -154,7 +156,11 @@ def test_two_user():
 
         user_1.send_wait({"get": {"topic": "me", "what": "sub"}}, {"meta": {"sub": []}})
 
-    user_send_mercGrp()
+    def list_user_history_subs():
+        user_1.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
+        user_2.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
+    
+    list_user_history_subs()
 
     user_1.join()
     user_2.join()
@@ -169,4 +175,4 @@ def test_with_frontend():
     user.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp", "head": {"nickname": "user_with_frontend", "avatar": "http://unknown.com/unknown.jpg"}}})
     user.join()
 
-test_with_frontend()
+test_two_user()
