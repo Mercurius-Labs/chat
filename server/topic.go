@@ -2784,9 +2784,19 @@ func (t *Topic) replyGetRecUsers(sess *Session, asUid types.Uid, req *MsgGetOpts
 		limit = req.Limit
 	}
 
+	subs, err := store.Users.GetSubs(asUid)
+	if err != nil {
+		sess.queueOut(decodeStoreError(err, msg.Id, msg.Timestamp, nil))
+		return err
+	}
+	hasSubUsers := map[string]bool{}
+	for _, sub := range subs {
+		hasSubUsers[sub.Topic] = true
+	}
+
 	recUsers := make([]string, 0, limit)
 	for uid, userData := range t.perUser {
-		if uid == asUid || userData.online <= 0 {
+		if uid == asUid || userData.online <= 0 || hasSubUsers[asUid.P2PName(uid)] {
 			continue
 		}
 		recUsers = append(recUsers, uid.UserId())
