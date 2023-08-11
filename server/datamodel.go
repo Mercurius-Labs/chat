@@ -382,6 +382,11 @@ func (src *MsgLastSeenInfo) describe() string {
 	return "'" + src.UserAgent + "' @ " + src.When.String()
 }
 
+type MsgUserInfo struct {
+	UserID string `json:"user_id"`
+	Public any    `json:"public,omitempty"`
+}
+
 // MsgCredServer is an account credential such as email or phone number.
 type MsgCredServer struct {
 	// Credential type, i.e. `email` or `tel`.
@@ -722,8 +727,8 @@ type MsgServerMeta struct {
 	Tags []string `json:"tags,omitempty"`
 	// Account credentials, 'me' only.
 	Cred []*MsgCredServer `json:"cred,omitempty"`
-	// Recommend userIDs
-	Rec []string `json:"rec,omitempty"`
+	// Recommend users
+	Rec []MsgUserInfo `json:"rec,omitempty"`
 }
 
 // Deep-shallow copy of meta message. Deep copy of Id and Topic fields, shallow copy of payload.

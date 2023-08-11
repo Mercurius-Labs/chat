@@ -2794,28 +2794,46 @@ func (t *Topic) replyGetRecUsers(sess *Session, asUid types.Uid, req *MsgGetOpts
 		hasSubUsers[sub.Topic] = true
 	}
 
-	recUsers := make([]string, 0, limit)
+	recUserIDs := make([]types.Uid, 0, limit)
 	for uid, userData := range t.perUser {
 		if uid == asUid || userData.online <= 0 || hasSubUsers[asUid.P2PName(uid)] {
 			continue
 		}
-		recUsers = append(recUsers, uid.UserId())
-		if len(recUsers) >= limit {
+		recUserIDs = append(recUserIDs, uid)
+		if len(recUserIDs) >= limit {
 			break
 		}
 	}
 
-	if len(recUsers) == 0 {
+	if len(recUserIDs) == 0 {
 		sess.queueOut(NoContentParamsReply(msg, now, map[string]string{"what": "rec"}))
-	} else {
-		sess.queueOut(&ServerComMessage{
-			Meta: &MsgServerMeta{
-				Id: msg.Id, Topic: t.original(asUid),
-				Timestamp: &now,
-				Rec:       recUsers,
-			},
-		})
+		return nil
 	}
+	users, err := store.Users.GetAll(recUserIDs...)
+	if err != nil {
+		sess.queueOut(decodeStoreError(err, msg.Id, msg.Timestamp, nil))
+		return nil
+	}
+	if len(users) != len(recUserIDs) {
+		sess.queueOut(ErrUserNotFoundReply(msg, msg.Timestamp))
+		return nil
+	}
+	recUsers := make([]MsgUserInfo, len(users))
+	for i, user := range users {
+		recUsers[i] = MsgUserInfo{
+			UserID: user.Uid().UserId(),
+			Public: user.Public,
+		}
+	}
+
+	sess.queueOut(&ServerComMessage{
+		Meta: &MsgServerMeta{
+			Id: msg.Id, Topic: t.original(asUid),
+			Timestamp: &now,
+			Rec:       recUsers,
+		},
+	})
+
 	return nil
 }
 
