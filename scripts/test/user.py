@@ -10,16 +10,17 @@ import requests
 
 use_agw = False
 remoteHost = 'localhost:6060'
-token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTM5NjM5MTEsImlhdCI6MTY5MTM3MTkxMSwicGF5bG9hZCI6IntcInVzZXJfaWRcIjpcIjEyMzQ1Njc4OTBcIixcIm5pY2tuYW1lXCI6XCJ0ZXN0MTIzNDU2Nzg5MFwifSJ9.PIC0cVdH0qogRGP8U7g24KusCLllQsZVjhgsiaDXZzs'
+tokenMap = {
+    'test_user_1' : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTQ2MTY5MzYsImlhdCI6MTY5MjAyNDkzNiwicGF5bG9hZCI6IntcInVzZXJfaWRcIjpcIjEyMzQ1Njc4OTNcIixcIm5pY2tuYW1lXCI6XCJ0ZXN0X2xsZl91c2VyXzRcIixcImF2YXRhclwiOlwiaHR0cDovL3d3dy51bmtub3duLmNvbS90ZXN0X2xsZl91c2VyXzIuanBnXCJ9In0.Gno2Gi_JYv9f0f0rK8h0uII27d0NyYGdva3oPKeqDUM',
+    'test_sss_user_2': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTQ2MTY4MzEsImlhdCI6MTY5MjAyNDgzMSwicGF5bG9hZCI6IntcInVzZXJfaWRcIjpcIjEyMzQ1Njc4OTFcIixcIm5pY2tuYW1lXCI6XCJ0ZXN0X2xsZl91c2VyXzJcIixcImF2YXRhclwiOlwiaHR0cDovL3d3dy51bmtub3duLmNvbS90ZXN0X2xsZl91c2VyXzIuanBnXCJ9In0.wAUiWl25ZrYZsT5V7s-pSfLM2y9Sh_sg4W9-e7tvy-8',
+    'test_user_3': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTQ2MTY4OTksImlhdCI6MTY5MjAyNDg5OSwicGF5bG9hZCI6IntcInVzZXJfaWRcIjpcIjEyMzQ1Njc4OTJcIixcIm5pY2tuYW1lXCI6XCJ0ZXN0X2xsZl91c2VyXzNcIixcImF2YXRhclwiOlwiaHR0cDovL3d3dy51bmtub3duLmNvbS90ZXN0X2xsZl91c2VyXzIuanBnXCJ9In0.ndgVpjmxdnIxoK_juk6cg-ziSDga2Zuf1aKIJcNKFu0'
+}
 
 ws_url=f'ws://{remoteHost}/v0/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
 if use_agw:
     remoteHost = '34.87.176.129:8000'
-    remoteHost = 'localhost:8000'
+    #remoteHost = 'localhost:8000'
     ws_url=f'ws://{remoteHost}/v1/chat/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
-if not token and use_agw:
-    resp = requests.post(f'http://{remoteHost}/v1/user/login', json={'address': '0xxxxx', 'sign_hex': '0x21', 'type': 'metamask'})
-    token = resp.json()['data']['token']
 
 def on_open(ws: websocket.WebSocketApp):
     print('open socket')
@@ -33,6 +34,12 @@ class User(threading.Thread):
         self.q = queue.Queue(10)
         header = {'x-uid': user_name}
         if use_agw:
+            token = ''
+            if user_name in tokenMap:
+                token = tokenMap[user_name]
+            else:
+                resp = requests.post(f'http://{remoteHost}/v1/user/login', json={'address': '0xxxxx', 'sign_hex': '0x21', 'type': 'metamask'})
+                token = resp.json()['data']['token']
             header = {'Sec-WebSocket-Protocol': token}
         self.ws = websocket.WebSocketApp(ws_url, on_message=self.on_message, on_open=on_open, on_close=on_close, header=header)
         self.user_name = user_name
@@ -103,14 +110,17 @@ def b64(s: str) -> str:
 
 def test_two_user():
     now = int(time.time())
-    user_1 = User(f"user_1_h3")
-    user_2 = User(f"user_2_h4")
+    user_1 = User(f"test_user_1")
+    user_2 = User(f"test_sss_user_2")
+    user_3 = User(f"test_user_3")
     user_1.start()
     user_2.start()
+    user_3.start()
     time.sleep(1)
 
-    user_1.login("TinodeWeb/0.22.8 (Edge/114.0; Win32); tinodejs/0.22.8")
+    user_1.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
     user_2.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
+    user_3.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
 
 
     def user_p2p_approve():
@@ -157,8 +167,14 @@ def test_two_user():
         user_1.send_wait({"get": {"topic": "me", "what": "sub"}}, {"meta": {"sub": []}})
 
     def list_user_history_subs():
-        user_1.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
-        user_2.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
+        #user_1.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
+        #user_2.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
+        user_1.send_wait({"sub": {"topic": "mercGrp", "get": {"what": "sub"}}})
+        user_2.send_wait({"sub": {"topic": "mercGrp", "get": {"what": "sub"}}})
+        user_3.send_wait({"sub": {"topic": "mercGrp", "get": {"what": "sub"}}})
+        user_1.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
+        user_2.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
+        user_3.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
     
     list_user_history_subs()
 
@@ -171,7 +187,8 @@ def test_with_frontend():
     time.sleep(1)
 
     user.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
-    user.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 24}, "what": "data"}}})
+    user.send_wait({"sub": {"topic": "mercGrp", "get": {"data": {"limit": 2}, "what": "data"}}})
+    user.send_wait({"get":{"topic":"me", "what": "sub desc"}}, {"meta": {"topic": "me"}})
     user.send_wait({"pub": {"topic": "mercGrp", "noecho": True, "content": "merc grp", "head": {"nickname": "user_with_frontend", "avatar": "http://unknown.com/unknown.jpg"}}})
     user.join()
 

@@ -934,6 +934,10 @@ func (s *Session) login(msg *ClientComMessage) {
 		}
 		return
 	}
+	if len(s.mercUserID) > 0 && msg.Login.Scheme != "merc" {
+		s.queueOut(ErrAuthUnknownScheme(msg.Id, "", msg.Timestamp))
+		return
+	}
 
 	if msg.Login.Scheme == "merc" {
 		userID := string(msg.Login.Secret)
