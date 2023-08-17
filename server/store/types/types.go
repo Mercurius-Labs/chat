@@ -521,6 +521,14 @@ type User struct {
 	DeviceArray []*DeviceDef `json:"-" bson:"devices"`
 }
 
+type MatchState uint64
+
+const (
+	MatchStateInit     MatchState = 0
+	MatchStateMatching MatchState = 1
+	MatchStateDone     MatchState = 2
+)
+
 // AccessMode is a definition of access mode bits.
 type AccessMode uint
 

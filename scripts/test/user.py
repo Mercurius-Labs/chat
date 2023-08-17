@@ -110,23 +110,23 @@ def b64(s: str) -> str:
 
 def test_two_user():
     now = int(time.time())
-    user_1 = User(f"test_user_1")
-    user_2 = User(f"test_sss_user_2")
-    user_3 = User(f"test_user_3")
+    user_1 = User(f"test_user_1_{now}")
+    user_2 = User(f"test_user_2_{now}")
+    #user_3 = User(f"test_user_3")
     user_1.start()
     user_2.start()
-    user_3.start()
+    #user_3.start()
     time.sleep(1)
 
     user_1.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
     user_2.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
-    user_3.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
+    #user_3.login("TinodeWeb/0.22.8 (Edge/114.0; Mac); tinodejs/0.22.8")
 
 
     def user_p2p_approve():
         # user2 try to sub user1
         user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-        user_1.await_msg({'pres': {"what": "acs"}})
+        user_1.await_msg({'pres': {"what": "acs", "src": user_2.user_id}})
         user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
         user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"JRWSA"}}})
 
@@ -169,12 +169,16 @@ def test_two_user():
     def list_user_history_subs():
         #user_1.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
         #user_2.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
-        user_1.send_wait({"sub": {"topic": "mercGrp", "get": {"what": "sub"}}})
-        user_2.send_wait({"sub": {"topic": "mercGrp", "get": {"what": "sub"}}})
-        user_3.send_wait({"sub": {"topic": "mercGrp", "get": {"what": "sub"}}})
+        user_1.send_wait({"sub": {"topic": "mercGrp"}})
+        user_2.send_wait({"sub": {"topic": "mercGrp"}})
+        #user_3.send_wait({"sub": {"topic": "mercGrp", "get": {"what": "data sub"}}})
         user_1.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
         user_2.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
-        user_3.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
+        user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA", "rec": True},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+        user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA", "rec": True},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+
+        user_1.send_wait({"pub": {"topic": user_2.user_id, "content": "hahaha", "noecho": True}})
+        #user_3.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
     
     list_user_history_subs()
 

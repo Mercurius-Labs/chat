@@ -52,6 +52,9 @@ type MsgGetQuery struct {
 
 // MsgSetSub is a payload in set.sub request to update current subscription or invite another user, {sub.what} == "sub".
 type MsgSetSub struct {
+	// Rec User for somebody
+	Rec bool `json:"rec,omitempty"`
+
 	// User affected by this request. Default (empty): current user
 	User string `json:"user,omitempty"`
 

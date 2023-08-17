@@ -126,6 +126,41 @@ type Topic struct {
 	callEstablishmentTimer *time.Timer
 }
 
+type matchUserData struct {
+	recEndTime    time.Time
+	recMatchState uint64
+	uid           types.Uid
+	matchedUser   *matchUserData
+	msg           *ClientComMessage
+	sess          *Session
+}
+
+func (d *matchUserData) isMatching(now time.Time) bool {
+	return d.recMatchState == uint64(types.MatchStateMatching) && d.recEndTime.After(now)
+}
+
+func (d *matchUserData) setState(old, state types.MatchState) bool {
+	return atomic.CompareAndSwapUint64(&d.recMatchState, uint64(old), uint64(state))
+}
+
+func (d *matchUserData) sendMatchMsg() {
+	d.sess.queueOut(&ServerComMessage{
+		Id: d.msg.Id,
+		Meta: &MsgServerMeta{
+			Topic: "mercGrp",
+			Rec: []MsgUserInfo{
+				MsgUserInfo{UserID: d.matchedUser.uid.UserId()},
+			},
+		},
+	})
+}
+
+func (d *matchUserData) timeout() {
+	if d.setState(types.MatchStateMatching, types.MatchStateInit) {
+		d.sess.queueOut(NoContentParamsReply(d.msg, time.Now(), map[string]string{"what": "rec", "waiting": ""}))
+	}
+}
+
 // perUserData holds topic's cache of per-subscriber data
 type perUserData struct {
 	// Count of subscription online and announced (presence not deferred).
@@ -136,6 +171,11 @@ type perUserData struct {
 	readID int
 	// ID of the latest Delete operation
 	delID int
+
+	// last rec time
+	rec           *matchUserData
+	recEndTime    time.Time
+	recMatchState types.MatchState
 
 	private any
 
@@ -1614,12 +1654,14 @@ func (t *Topic) thisUserSub(sess *Session, pkt *ClientComMessage, asUid types.Ui
 				ModeGiven: userData.modeGiven,
 				Private:   userData.private,
 			}
+			if pkt.Set != nil && pkt.Set.Sub != nil && pkt.Set.Sub.Rec {
+				sub.ModeGiven = types.ModeCP2P
+			}
 
 			if err := store.Subs.Create(sub); err != nil {
 				sess.queueOut(ErrUnknownReply(pkt, now))
 				return nil, err
 			}
-
 		} else if asChan && userData.modeWant != oldWant {
 			// Channel reader changed access mode, save changed mode to db.
 			if err := store.Subs.Update(tname, asUid,
@@ -1786,6 +1828,9 @@ func (t *Topic) thisUserSub(sess *Session, pkt *ClientComMessage, asUid types.Ui
 			}
 		}
 	}
+	if pkt.Set != nil && pkt.Set.Sub != nil {
+		userData.modeGiven = types.ModeCP2P
+	}
 	// Apply changes.
 	t.perUser[asUid] = userData
 
@@ -1826,7 +1871,7 @@ func (t *Topic) thisUserSub(sess *Session, pkt *ClientComMessage, asUid types.Ui
 
 	if !userData.modeGiven.IsJoiner() {
 		// User was banned
-		logs.Warn.Println("topic access denied, modeGiven=", userData.modeGiven)
+		logs.Warn.Println("topic access denied, modeGiven=", userData.modeGiven, "user=", asUid)
 		sess.queueOut(ErrPermissionDeniedReply(pkt, now))
 		return nil, errors.New("topic access denied; user is banned")
 	}
@@ -2779,61 +2824,41 @@ func (t *Topic) replyGetRecUsers(sess *Session, asUid types.Uid, req *MsgGetOpts
 		return errors.New("invalid topic category for getting credentials")
 	}
 
-	limit := 1
-	if req != nil && req.Limit > 0 {
-		limit = req.Limit
+	self := t.perUser[asUid]
+	if self.online <= 0 {
+		sess.queueOut(ErrOperationNotAllowedReply(msg, now))
+		return errors.New("invalid online users")
 	}
-
-	subs, err := store.Users.GetSubs(asUid)
-	if err != nil {
-		sess.queueOut(decodeStoreError(err, msg.Id, msg.Timestamp, nil))
-		return err
+	self.rec = &matchUserData{
+		recEndTime:    now.Add(10 * time.Second),
+		recMatchState: uint64(types.MatchStateMatching),
+		uid:           asUid,
+		msg:           msg,
+		sess:          sess,
 	}
-	hasSubUsers := map[string]bool{}
-	for _, sub := range subs {
-		hasSubUsers[sub.Topic] = true
-	}
-
-	recUserIDs := make([]types.Uid, 0, limit)
+	t.perUser[asUid] = self
 	for uid, userData := range t.perUser {
-		if uid == asUid || userData.online <= 0 || hasSubUsers[asUid.P2PName(uid)] {
+		if uid == asUid || userData.online <= 0 || userData.rec == nil || !userData.rec.isMatching(now) {
 			continue
 		}
-		recUserIDs = append(recUserIDs, uid)
-		if len(recUserIDs) >= limit {
-			break
+		if !userData.rec.setState(types.MatchStateMatching, types.MatchStateDone) {
+			continue
 		}
+		self.rec.recMatchState = uint64(types.MatchStateDone)
+		userData.rec.matchedUser = self.rec
+		self.rec.matchedUser = userData.rec
+		break
 	}
-
-	if len(recUserIDs) == 0 {
-		sess.queueOut(NoContentParamsReply(msg, now, map[string]string{"what": "rec"}))
+	if self.rec.matchedUser == nil { // 没有匹配到，等一段时间看看
+		go func() {
+			time.Sleep(10 * time.Second)
+			// 超过一段时间匹配不到
+			self.rec.timeout()
+		}()
 		return nil
 	}
-	users, err := store.Users.GetAll(recUserIDs...)
-	if err != nil {
-		sess.queueOut(decodeStoreError(err, msg.Id, msg.Timestamp, nil))
-		return nil
-	}
-	if len(users) != len(recUserIDs) {
-		sess.queueOut(ErrUserNotFoundReply(msg, msg.Timestamp))
-		return nil
-	}
-	recUsers := make([]MsgUserInfo, len(users))
-	for i, user := range users {
-		recUsers[i] = MsgUserInfo{
-			UserID: user.Uid().UserId(),
-			Public: user.Public,
-		}
-	}
-
-	sess.queueOut(&ServerComMessage{
-		Meta: &MsgServerMeta{
-			Id: msg.Id, Topic: t.original(asUid),
-			Timestamp: &now,
-			Rec:       recUsers,
-		},
-	})
-
+	self.rec.matchedUser.sendMatchMsg()
+	self.rec.sendMatchMsg()
 	return nil
 }
 

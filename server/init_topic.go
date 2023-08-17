@@ -348,16 +348,18 @@ func initTopicP2P(t *Topic, sreg *ClientComMessage) error {
 
 			// Assign user2's ModeGiven based on what user1 has provided.
 			// We don't know access mode for user2, assume it's Auth.
+			// Use user1.Auth as modeGiven for the other user
+			sub2.ModeGiven = users[u1].Access.Auth
 			if pktsub.Set != nil && pktsub.Set.Desc != nil && pktsub.Set.Desc.DefaultAcs != nil {
-				// Use provided DefaultAcs as non-default modeGiven for the other user.
-				// The other user is assumed to have auth level "Auth".
-				sub2.ModeGiven = users[u1].Access.Auth
-				if err := sub2.ModeGiven.UnmarshalText([]byte(pktsub.Set.Desc.DefaultAcs.Auth)); err != nil {
-					logs.Err.Println("hub: invalid access mode", t.xoriginal, pktsub.Set.Desc.DefaultAcs.Auth)
+				if pktsub.Set.Sub != nil && pktsub.Set.Sub.Rec {
+					sub2.ModeGiven = types.ModeCP2P
+				} else if pktsub.Set.Desc != nil && pktsub.Set.Desc.DefaultAcs != nil {
+					// Use provided DefaultAcs as non-default modeGiven for the other user.
+					// The other user is assumed to have auth level "Auth".
+					if err := sub2.ModeGiven.UnmarshalText([]byte(pktsub.Set.Desc.DefaultAcs.Auth)); err != nil {
+						logs.Err.Println("hub: invalid access mode", t.xoriginal, pktsub.Set.Desc.DefaultAcs.Auth)
+					}
 				}
-			} else {
-				// Use user1.Auth as modeGiven for the other user
-				sub2.ModeGiven = users[u1].Access.Auth
 			}
 			// Sanity check
 			sub2.ModeGiven = sub2.ModeGiven&types.ModeCP2P | types.ModeApprove
@@ -379,6 +381,9 @@ func initTopicP2P(t *Topic, sreg *ClientComMessage) error {
 				users[u2].Access.Anon,
 				users[u2].Access.Auth,
 				types.ModeCP2P)
+			if pktsub.Set.Sub != nil && pktsub.Set.Sub.Rec {
+				userData.modeGiven = types.ModeCP2P
+			}
 
 			// By default assign the same mode that user1 gave to user2 (could be changed below)
 			userData.modeWant = sub2.ModeGiven

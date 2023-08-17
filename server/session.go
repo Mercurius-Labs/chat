@@ -162,6 +162,9 @@ type Session struct {
 
 	// Type of proxy to master request being handled.
 	proxyReq ProxyReqType
+
+	// rec消息
+	recUserID int
 }
 
 // Subscription is a mapper of sessions to topics.
