@@ -144,13 +144,20 @@ func (d *matchUserData) setState(old, state types.MatchState) bool {
 }
 
 func (d *matchUserData) sendMatchMsg() {
+	recUser := MsgUserInfo{
+		UserID: d.matchedUser.uid.UserId(),
+	}
+	user, err := store.Users.Get(d.matchedUser.uid)
+	if err == nil {
+		recUser.Public = user.Public
+	} else {
+		logs.Err.Printf("sid=%s, get user=%d public info failed", d.sess.sid, d.matchedUser.uid)
+	}
 	d.sess.queueOut(&ServerComMessage{
 		Id: d.msg.Id,
 		Meta: &MsgServerMeta{
 			Topic: "mercGrp",
-			Rec: []MsgUserInfo{
-				MsgUserInfo{UserID: d.matchedUser.uid.UserId()},
-			},
+			Rec:   []MsgUserInfo{recUser},
 		},
 	})
 }
@@ -173,9 +180,7 @@ type perUserData struct {
 	delID int
 
 	// last rec time
-	rec           *matchUserData
-	recEndTime    time.Time
-	recMatchState types.MatchState
+	rec *matchUserData
 
 	private any
 
@@ -1287,6 +1292,16 @@ func (t *Topic) handlePresence(msg *ServerComMessage) {
 
 	// "what" may have changed, i.e. unset or "+command" removed ("on+en" -> "on")
 	msg.Pres.What = what
+
+	fromUid := types.ParseUserId(msg.Pres.Src)
+	if !fromUid.IsZero() && what == "acs" {
+		user, err := store.Users.Get(fromUid)
+		if err == nil {
+			msg.Pres.Extra = map[string]any{
+				"public": user.Public,
+			}
+		}
+	}
 
 	t.broadcastToSessions(msg)
 }
@@ -2857,8 +2872,10 @@ func (t *Topic) replyGetRecUsers(sess *Session, asUid types.Uid, req *MsgGetOpts
 		}()
 		return nil
 	}
-	self.rec.matchedUser.sendMatchMsg()
-	self.rec.sendMatchMsg()
+	go func() {
+		self.rec.matchedUser.sendMatchMsg()
+		self.rec.sendMatchMsg()
+	}()
 	return nil
 }
 

@@ -649,6 +649,8 @@ type MsgServerPres struct {
 	// to allow different handling on the client
 	Acs *MsgAccessMode `json:"dacs,omitempty"`
 
+	Extra any `json:"extra,omitempty"`
+
 	// UNroutable params. All marked with `json:"-"` to exclude from json marshaling.
 	// They are still serialized for intra-cluster communication.
 

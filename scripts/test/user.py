@@ -88,8 +88,12 @@ class User(threading.Thread):
                 if isinstance(v, dict):
                     if not sub_contains(f[k], v):
                         return False
-                elif isinstance(v, list) and len(v) == 0:
-                    pass
+                elif isinstance(v, list):
+                    if len(v) == 0:
+                        pass
+                    for i, vv in enumerate(v):
+                        if not sub_contains(f[k][i], vv):
+                            return False
                 elif f[k] != v:
                     #print(f'value is not match')
                     return False
@@ -125,10 +129,12 @@ def test_two_user():
 
     def user_p2p_approve():
         # user2 try to sub user1
-        user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+        user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"public":{"avatar":"xxx", "nickname":"xxx"},"defacs":{"auth":"JRWSA"}}}}})
         user_1.await_msg({'pres': {"what": "acs", "src": user_2.user_id}})
         user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
         user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"JRWSA"}}})
+        user_2.await_msg({'pres':{"topic":user_1.user_id, "what": "acs", "dacs": {"given": "+RW"}}})
+
 
         # send msg
         user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
@@ -166,21 +172,20 @@ def test_two_user():
 
         user_1.send_wait({"get": {"topic": "me", "what": "sub"}}, {"meta": {"sub": []}})
 
-    def list_user_history_subs():
-        #user_1.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
-        #user_2.send_wait({"get":{"topic":"me", "what": "sub"}}, {"meta": {"topic": "me"}})
+    def rec_user_pub():
         user_1.send_wait({"sub": {"topic": "mercGrp"}})
         user_2.send_wait({"sub": {"topic": "mercGrp"}})
-        #user_3.send_wait({"sub": {"topic": "mercGrp", "get": {"what": "data sub"}}})
-        user_1.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
-        user_2.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
-        user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA", "rec": True},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-        user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA", "rec": True},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-
+        user_1.send({"get":{"topic":"mercGrp", "what": "rec"}})
+        user_2.send({"get":{"topic":"mercGrp", "what": "rec"}})
+        user_1.await_msg({"meta": {"rec": [{"user_id": user_2.user_id}]}})
+        user_2.await_msg({"meta": {"rec": [{"user_id": user_1.user_id}]}})
+        user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA", "rec": True},"desc":{"defacs":{"auth":"JRWSA"}, "public": {"avatar": "xxx", "nickname":"xxx"}}}}})
         user_1.send_wait({"pub": {"topic": user_2.user_id, "content": "hahaha", "noecho": True}})
-        #user_3.send_wait({"get":{"topic":"mercGrp", "what": "rec"}}, {"meta": {}})
-    
-    list_user_history_subs()
+
+        user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA", "rec": True},"desc":{"defacs":{"auth":"JRWSA"}}}}})
+        user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hahaha v2", "noecho": True}})
+
+    user_p2p_approve()
 
     user_1.join()
     user_2.join()
