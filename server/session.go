@@ -1269,6 +1269,7 @@ func (s *Session) del(msg *ClientComMessage) {
 func (s *Session) note(msg *ClientComMessage) {
 	if s.ver == 0 || msg.AsUser == "" {
 		// Silently ignore the message: have not received {hi} or don't know who sent the message.
+		logs.Warn.Printf("msg.AsUser maybe nil")
 		return
 	}
 

@@ -185,7 +185,7 @@ def test_two_user():
         user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA", "rec": True},"desc":{"defacs":{"auth":"JRWSA"}}}}})
         user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hahaha v2", "noecho": True}})
 
-    rec_user_pub()
+    user_p2p_approve()
 
     user_1.join()
     user_2.join()

@@ -662,6 +662,9 @@ func (t *Topic) handleServerMsg(msg *ServerComMessage) {
 	if msg.Pres != nil {
 		t.handlePresence(msg)
 	} else if msg.Info != nil {
+		if msg.Info.What == "1v1" {
+			logs.Info.Printf("user=%s try to 1v1 with %s", msg.Info.Src, msg.RcptTo)
+		}
 		t.broadcastToSessions(msg)
 	} else {
 		// TODO(gene): maybe remove this panic.
