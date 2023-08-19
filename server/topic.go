@@ -2844,8 +2844,12 @@ func (t *Topic) replyGetRecUsers(sess *Session, asUid types.Uid, req *MsgGetOpts
 		sess.queueOut(ErrOperationNotAllowedReply(msg, now))
 		return errors.New("invalid online users")
 	}
+	wait := 10 * time.Second
+	if req != nil && req.WaitSec > 0 {
+		wait = time.Duration(req.WaitSec) * time.Second
+	}
 	self.rec = &matchUserData{
-		recEndTime:    now.Add(10 * time.Second),
+		recEndTime:    now.Add(wait),
 		recMatchState: uint64(types.MatchStateMatching),
 		uid:           asUid,
 		msg:           msg,
@@ -2866,7 +2870,7 @@ func (t *Topic) replyGetRecUsers(sess *Session, asUid types.Uid, req *MsgGetOpts
 	}
 	if self.rec.matchedUser == nil { // 没有匹配到，等一段时间看看
 		go func() {
-			time.Sleep(10 * time.Second)
+			time.Sleep(wait)
 			// 超过一段时间匹配不到
 			self.rec.timeout()
 		}()

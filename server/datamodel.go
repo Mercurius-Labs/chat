@@ -32,6 +32,8 @@ type MsgGetOpts struct {
 	BeforeId int `json:"before,omitempty"`
 	// Limit the number of messages loaded
 	Limit int `json:"limit,omitempty"`
+	// max wait second for sec
+	WaitSec int `json:"wait_sec,omitempty"`
 }
 
 // MsgGetQuery is a topic metadata or data query.

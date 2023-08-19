@@ -175,7 +175,7 @@ def test_two_user():
     def rec_user_pub():
         user_1.send_wait({"sub": {"topic": "mercGrp"}})
         user_2.send_wait({"sub": {"topic": "mercGrp"}})
-        user_1.send({"get":{"topic":"mercGrp", "what": "rec"}})
+        user_1.send({"get":{"topic":"mercGrp", "what": "rec", "rec": {"wait_sec": 20}}})
         user_2.send({"get":{"topic":"mercGrp", "what": "rec"}})
         user_1.await_msg({"meta": {"rec": [{"user_id": user_2.user_id}]}})
         user_2.await_msg({"meta": {"rec": [{"user_id": user_1.user_id}]}})
@@ -185,7 +185,7 @@ def test_two_user():
         user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA", "rec": True},"desc":{"defacs":{"auth":"JRWSA"}}}}})
         user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hahaha v2", "noecho": True}})
 
-    user_p2p_approve()
+    rec_user_pub()
 
     user_1.join()
     user_2.join()
