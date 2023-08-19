@@ -78,6 +78,7 @@ class User(threading.Thread):
         loginResp = self.await_msg({"ctrl":{}})
         self.user_id = loginResp['ctrl']['params']['user']
         self.send_wait({"sub":{"topic":"me", "get":{"what": "sub"}}})
+        print()
 
     def await_msg(self, check: dict) -> dict:
         def sub_contains(f: dict,  e: dict) -> bool:
@@ -116,7 +117,7 @@ def test_two_user():
     now = int(time.time())
     user_1 = User(f"test_user_1_{now}")
     user_2 = User(f"test_user_2_{now}")
-    #user_3 = User(f"test_user_3")
+    #user_3 = User(f"test_user_3_{now}")
     user_1.start()
     user_2.start()
     #user_3.start()
@@ -129,12 +130,12 @@ def test_two_user():
 
     def user_p2p_approve():
         # user2 try to sub user1
-        user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"public":{"avatar":"xxx", "nickname":"xxx"},"defacs":{"auth":"JRWSA"}}}}})
-        user_1.await_msg({'pres': {"what": "acs", "src": user_2.user_id}})
-        user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-        user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"JRWSA"}}})
-        user_2.await_msg({'pres':{"topic":user_1.user_id, "what": "acs", "dacs": {"given": "+RW"}}})
-
+        user_2.send({"note":{"what":"1v1", "topic":user_1.user_id, "payload": {"nickname":"xxx", "avatar": "xxx"}}})
+        user_1.await_msg({"info": {"src": user_2.user_id, "payload": {}}})
+        user_1.send({"note":{"what":"1v1", "topic": user_2.user_id, "payload": {"reply": "agree"}}})
+        user_1.send_wait({"sub": {"topic": user_2.user_id}})
+        user_2.await_msg({"info":{"payload": {"reply": "agree"}}})
+        user_2.send_wait({"sub": {"topic": user_1.user_id}})
 
         # send msg
         user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})
@@ -145,11 +146,10 @@ def test_two_user():
 
     def user_p2p_reject():
         # user2 try to sub user1
-        user_2.send_wait({"sub":{"topic":user_1.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-        user_1.await_msg({'pres': {"what": "acs"}})
-        user_1.send_wait({"sub":{"topic":user_2.user_id, "set":{"sub":{"mode":"JRWSA"},"desc":{"defacs":{"auth":"JRWSA"}}}}})
-        user_1.send_wait({"set":{"topic":user_2.user_id, "sub":{"user":user_2.user_id, "mode":"N"}}})
-        user_2.await_msg({'pres': {'what': 'acs'}})
+        user_2.send({"note":{"what":"1v1", "topic":user_1.user_id, "payload": {"nickname":"xxx", "avatar": "xxx"}}})
+        user_1.await_msg({"info": {"scr": user_2.user_id, "payload": {}}})
+        user_1.send({"note":{"what":"1v1", "topic": user_2.user_id, "payload": {"reply": "reject"}}})
+        user_2.await_msg({"info":{"payload": {"reply": "reject"}}})
 
         # send msg
         user_2.send_wait({"pub": {"topic": user_1.user_id, "content": "hello", "noecho": True}})

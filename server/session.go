@@ -1291,6 +1291,10 @@ func (s *Session) note(msg *ClientComMessage) {
 		if msg.Note.SeqId != 0 {
 			return
 		}
+	case "1v1":
+		if msg.Note.Payload == nil {
+			return
+		}
 	case "call":
 		if types.GetTopicCat(msg.RcptTo) != types.TopicCatP2P {
 			// Calls are only available in P2P topics.
@@ -1316,6 +1320,24 @@ func (s *Session) note(msg *ClientComMessage) {
 			s.queueOut(ErrServiceUnavailableReply(msg, msg.Timestamp))
 			logs.Err.Println("s.note: sub.broacast channel full, topic ", msg.RcptTo, s.sid)
 		}
+	} else if msg.Note.What == "1v1" {
+		select {
+		case globals.hub.routeSrv <- &ServerComMessage{
+			Info: &MsgServerInfo{
+				Topic:   "me",
+				Src:     msg.AsUser,
+				From:    msg.AsUser,
+				What:    msg.Note.What,
+				Payload: msg.Note.Payload,
+			},
+			RcptTo: msg.Note.Topic,
+		}:
+		default:
+			// Reply with a 503 to the user.
+			s.queueOut(ErrServiceUnavailableReply(msg, msg.Timestamp))
+			logs.Err.Println("s.note: hub.route channel full", s.sid)
+		}
+
 	} else if msg.Note.What == "recv" || (msg.Note.What == "call" && (msg.Note.Event == "ringing" || msg.Note.Event == "hang-up" || msg.Note.Event == "accept")) {
 		// One of the following events happened:
 		// 1. Client received a pres notification about a new message, initiated a fetch

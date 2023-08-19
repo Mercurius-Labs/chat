@@ -381,9 +381,6 @@ func initTopicP2P(t *Topic, sreg *ClientComMessage) error {
 				users[u2].Access.Anon,
 				users[u2].Access.Auth,
 				types.ModeCP2P)
-			if pktsub.Set.Sub != nil && pktsub.Set.Sub.Rec {
-				userData.modeGiven = types.ModeCP2P
-			}
 
 			// By default assign the same mode that user1 gave to user2 (could be changed below)
 			userData.modeWant = sub2.ModeGiven

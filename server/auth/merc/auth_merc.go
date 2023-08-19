@@ -82,7 +82,7 @@ func (a authenticator) Authenticate(secret []byte, remoteAddr string) (*auth.Rec
 		user := &types.User{
 			Access: types.DefaultAccess{
 				// Auth: types.ModeCP2P | types.ModeCPublic,
-				Auth: types.ModeJoin | types.ModeApprove,
+				Auth: types.ModeCP2P | types.ModeCPublic,
 				Anon: types.ModeNone,
 			},
 			Public: userInfo["public"],
