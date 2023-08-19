@@ -130,7 +130,7 @@ def test_two_user():
 
     def user_p2p_approve():
         # user2 try to sub user1
-        user_2.send({"note":{"what":"1v1", "topic":user_1.user_id, "payload": {"nickname":"xxx", "avatar": "xxx"}}})
+        user_2.send({"note":{"what":"1v1", "topic":user_1.user_id, "payload": {"nickname":"xxx", "avatar": "xxx", "chat": True}}})
         user_1.await_msg({"info": {"src": user_2.user_id, "payload": {}}})
         user_1.send({"note":{"what":"1v1", "topic": user_2.user_id, "payload": {"reply": "agree"}}})
         user_1.send_wait({"sub": {"topic": user_2.user_id}})

@@ -1294,6 +1294,7 @@ func (s *Session) note(msg *ClientComMessage) {
 		}
 	case "1v1":
 		if msg.Note.Payload == nil {
+			logs.Warn.Print("payload is nil")
 			return
 		}
 	case "call":

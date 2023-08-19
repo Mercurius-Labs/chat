@@ -657,6 +657,7 @@ func (t *Topic) handleServerMsg(msg *ServerComMessage) {
 	// Server-generated message: {info} or {pres}.
 	if t.isInactive() {
 		// Ignore message - the topic is paused or being deleted.
+		logs.Info.Printf("msg=%s topic is inactive", msg.Id)
 		return
 	}
 	if msg.Pres != nil {
