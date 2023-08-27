@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/tinode/chat/server/auth"
+	"github.com/tinode/chat/server/chat"
 	"github.com/tinode/chat/server/logs"
 	"github.com/tinode/chat/server/store"
 	"github.com/tinode/chat/server/store/types"
@@ -126,48 +127,6 @@ type Topic struct {
 	callEstablishmentTimer *time.Timer
 }
 
-type matchUserData struct {
-	recEndTime    time.Time
-	recMatchState uint64
-	uid           types.Uid
-	matchedUser   *matchUserData
-	msg           *ClientComMessage
-	sess          *Session
-}
-
-func (d *matchUserData) isMatching(now time.Time) bool {
-	return d.recMatchState == uint64(types.MatchStateMatching) && d.recEndTime.After(now)
-}
-
-func (d *matchUserData) setState(old, state types.MatchState) bool {
-	return atomic.CompareAndSwapUint64(&d.recMatchState, uint64(old), uint64(state))
-}
-
-func (d *matchUserData) sendMatchMsg() {
-	recUser := MsgUserInfo{
-		UserID: d.matchedUser.uid.UserId(),
-	}
-	user, err := store.Users.Get(d.matchedUser.uid)
-	if err == nil {
-		recUser.Public = user.Public
-	} else {
-		logs.Err.Printf("sid=%s, get user=%d public info failed", d.sess.sid, d.matchedUser.uid)
-	}
-	d.sess.queueOut(&ServerComMessage{
-		Id: d.msg.Id,
-		Meta: &MsgServerMeta{
-			Topic: "mercGrp",
-			Rec:   []MsgUserInfo{recUser},
-		},
-	})
-}
-
-func (d *matchUserData) timeout() {
-	if d.setState(types.MatchStateMatching, types.MatchStateInit) {
-		d.sess.queueOut(NoContentParamsReply(d.msg, time.Now(), map[string]string{"what": "rec", "waiting": ""}))
-	}
-}
-
 // perUserData holds topic's cache of per-subscriber data
 type perUserData struct {
 	// Count of subscription online and announced (presence not deferred).
@@ -178,9 +137,6 @@ type perUserData struct {
 	readID int
 	// ID of the latest Delete operation
 	delID int
-
-	// last rec time
-	rec *matchUserData
 
 	private any
 
@@ -376,6 +332,7 @@ func (t *Topic) unregisterSession(msg *ClientComMessage) {
 // registerSession handles a session join (registration) request
 // received via the Topic.reg channel.
 func (t *Topic) registerSession(msg *ClientComMessage) {
+	logs.Info.Printf("reg session=%s to topic=%s", msg.sess.sid, t.name)
 	// Request to add a connection to this topic
 	if t.isInactive() {
 		msg.sess.queueOut(ErrLockedReply(msg, types.TimeNow()))
@@ -657,15 +614,12 @@ func (t *Topic) handleServerMsg(msg *ServerComMessage) {
 	// Server-generated message: {info} or {pres}.
 	if t.isInactive() {
 		// Ignore message - the topic is paused or being deleted.
-		logs.Info.Printf("msg=%s topic is inactive", msg.Id)
+		logs.Info.Printf("msg=%s topic=%s is inactive", msg.Id, t.name)
 		return
 	}
 	if msg.Pres != nil {
 		t.handlePresence(msg)
 	} else if msg.Info != nil {
-		if msg.Info.What == "1v1" {
-			logs.Info.Printf("user=%s try to 1v1 with %s", msg.Info.Src, msg.RcptTo)
-		}
 		t.broadcastToSessions(msg)
 	} else {
 		// TODO(gene): maybe remove this panic.
@@ -2843,47 +2797,34 @@ func (t *Topic) replyGetRecUsers(sess *Session, asUid types.Uid, req *MsgGetOpts
 		return errors.New("invalid topic category for getting credentials")
 	}
 
-	self := t.perUser[asUid]
-	if self.online <= 0 {
-		sess.queueOut(ErrOperationNotAllowedReply(msg, now))
-		return errors.New("invalid online users")
-	}
 	wait := 10 * time.Second
 	if req != nil && req.WaitSec > 0 {
 		wait = time.Duration(req.WaitSec) * time.Second
 	}
-	self.rec = &matchUserData{
-		recEndTime:    now.Add(wait),
-		recMatchState: uint64(types.MatchStateMatching),
-		uid:           asUid,
-		msg:           msg,
-		sess:          sess,
-	}
-	t.perUser[asUid] = self
-	for uid, userData := range t.perUser {
-		if uid == asUid || userData.online <= 0 || userData.rec == nil || !userData.rec.isMatching(now) {
-			continue
+	if err := chat.Lobby.AsyncMatch(asUid, wait, func(matched bool, matchedUid types.Uid) {
+		if matched {
+			recUser := MsgUserInfo{
+				UserID: matchedUid.UserId(),
+			}
+			user, err := store.Users.Get(matchedUid)
+			if err == nil {
+				recUser.Public = user.Public
+			} else {
+				logs.Err.Printf("sid=%s, get user=%d public info failed", sess.sid, matchedUid)
+			}
+			sess.queueOut(&ServerComMessage{
+				Id: msg.Id,
+				Meta: &MsgServerMeta{
+					Topic: "mercGrp",
+					Rec:   []MsgUserInfo{recUser},
+				},
+			})
+		} else {
+			sess.queueOut(NoContentParamsReply(msg, time.Now(), map[string]string{"what": "rec", "waiting": ""}))
 		}
-		if !userData.rec.setState(types.MatchStateMatching, types.MatchStateDone) {
-			continue
-		}
-		self.rec.recMatchState = uint64(types.MatchStateDone)
-		userData.rec.matchedUser = self.rec
-		self.rec.matchedUser = userData.rec
-		break
+	}); err != nil {
+		sess.queueOut(decodeStoreError(err, msg.Id, msg.Timestamp, map[string]any{"what": "rec"}))
 	}
-	if self.rec.matchedUser == nil { // 没有匹配到，等一段时间看看
-		go func() {
-			time.Sleep(wait)
-			// 超过一段时间匹配不到
-			self.rec.timeout()
-		}()
-		return nil
-	}
-	go func() {
-		self.rec.matchedUser.sendMatchMsg()
-		self.rec.sendMatchMsg()
-	}()
 	return nil
 }
 

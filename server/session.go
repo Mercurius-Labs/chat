@@ -22,6 +22,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/tinode/chat/pbx"
 	"github.com/tinode/chat/server/auth"
+	"github.com/tinode/chat/server/chat"
 	"github.com/tinode/chat/server/logs"
 	"github.com/tinode/chat/server/store"
 	"github.com/tinode/chat/server/store/types"
@@ -234,6 +235,9 @@ func (s *Session) unsubAll() {
 		// The whole session is being dropped; ClientComMessage is a wrapper for session, ClientComMessage.init is false.
 		// keep redundant init: false so it can be searched for.
 		sub.done <- &ClientComMessage{sess: s, init: false}
+	}
+	if !s.uid.IsZero() {
+		chat.Lobby.Leave(s.uid)
 	}
 }
 
@@ -605,6 +609,7 @@ func (s *Session) dispatch(msg *ClientComMessage) {
 	case msg.Note != nil:
 		// If user is not authenticated or version not set the {note} is silently ignored.
 		handler = s.note
+		msg.Id = msg.Note.Id
 		msg.Original = msg.Note.Topic
 		uaRefresh = true
 
@@ -650,6 +655,10 @@ func (s *Session) subscribe(msg *ClientComMessage) {
 		}
 	}
 
+	if strings.HasPrefix(msg.RcptTo, "p2p") {
+		chat.Lobby.StartChat(types.ParseUserId(msg.AsUser))
+	}
+
 	// Session can subscribe to topic on behalf of a single user at a time.
 	if sub := s.getSub(msg.RcptTo); sub != nil {
 		s.queueOut(InfoAlreadySubscribed(msg.Id, msg.Original, msg.Timestamp))
@@ -687,6 +696,10 @@ func (s *Session) leave(msg *ClientComMessage) {
 			s.delSub(msg.RcptTo)
 			s.inflightReqs.Add(1)
 			sub.done <- msg
+
+			if strings.HasPrefix(msg.RcptTo, "p2p") {
+				chat.Lobby.Leave(types.ParseUserId(msg.AsUser))
+			}
 		}
 	} else if !msg.Leave.Unsub {
 		// Session is not attached to the topic, wants to leave - fine, no change
@@ -1297,6 +1310,18 @@ func (s *Session) note(msg *ClientComMessage) {
 			logs.Warn.Print("payload is nil")
 			return
 		}
+		var data struct {
+			Chat  bool   `json:"chat"`
+			Reply string `json:"reply"`
+		}
+		json.Unmarshal(msg.Note.Payload, &data)
+		if data.Reply == "agree" || data.Chat {
+			logs.Info.Printf("user=%s try to chat with user=%s", msg.AsUser, msg.Note.Topic)
+			if err := chat.Lobby.TryP2PChat(types.ParseUserId(msg.AsUser), types.ParseUserId(msg.Note.Topic)); err != nil {
+				s.queueOut(decodeStoreError(err, msg.Id, msg.Timestamp, nil))
+				return
+			}
+		}
 	case "call":
 		if types.GetTopicCat(msg.RcptTo) != types.TopicCatP2P {
 			// Calls are only available in P2P topics.
@@ -1312,17 +1337,7 @@ func (s *Session) note(msg *ClientComMessage) {
 		return
 	}
 
-	if sub := s.getSub(msg.RcptTo); sub != nil {
-		// Pings can be sent to subscribed topics only
-		select {
-		case sub.broadcast <- msg:
-			logs.Info.Println("send note msg to sub success, msg.ID", msg.Id)
-		default:
-			// Reply with a 503 to the user.
-			s.queueOut(ErrServiceUnavailableReply(msg, msg.Timestamp))
-			logs.Err.Println("s.note: sub.broacast channel full, topic ", msg.RcptTo, s.sid)
-		}
-	} else if msg.Note.What == "1v1" {
+	if msg.Note.What == "1v1" {
 		select {
 		case globals.hub.routeSrv <- &ServerComMessage{
 			Info: &MsgServerInfo{
@@ -1340,6 +1355,16 @@ func (s *Session) note(msg *ClientComMessage) {
 			logs.Err.Println("s.note: hub.route channel full", s.sid)
 		}
 
+	} else if sub := s.getSub(msg.RcptTo); sub != nil {
+		// Pings can be sent to subscribed topics only
+		select {
+		case sub.broadcast <- msg:
+			logs.Info.Println("send note msg to sub success, msg.ID", msg.Id)
+		default:
+			// Reply with a 503 to the user.
+			s.queueOut(ErrServiceUnavailableReply(msg, msg.Timestamp))
+			logs.Err.Println("s.note: sub.broacast channel full, topic ", msg.RcptTo, s.sid)
+		}
 	} else if msg.Note.What == "recv" || (msg.Note.What == "call" && (msg.Note.Event == "ringing" || msg.Note.Event == "hang-up" || msg.Note.Event == "accept")) {
 		// One of the following events happened:
 		// 1. Client received a pres notification about a new message, initiated a fetch

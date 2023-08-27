@@ -1302,6 +1302,9 @@ func GetTopicCat(name string) TopicCat {
 	if name == "mercGrp" {
 		return TopicCatSys
 	}
+	if len(name) < 3 {
+		panic("invalid topic type for name '" + name + "'")
+	}
 
 	switch name[:3] {
 	case "usr":
