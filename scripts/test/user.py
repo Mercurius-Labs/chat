@@ -1,5 +1,3 @@
-from collections.abc import Callable, Iterable, Mapping
-from typing import Any
 import websocket
 import json
 import queue
@@ -7,18 +5,25 @@ import threading
 import base64
 import time
 import requests
+import jwt
+import os
 
-use_agw = False
+def gen_jwt_token(user_name):
+    payload = {"user_id":user_name,"nickname":user_name,"avatar":f"http://unknown.com/{user_name}.jpg"}
+    claim = {
+        "exp": int(time.time()-2000) + 2592000,
+        "iat": int(time.time()-2000),
+        "payload": json.dumps(payload)
+    }
+    key = os.getenv("MERC_SECRET_KEY")
+    return jwt.encode(payload=claim, key=key, algorithm="HS256")
+
+use_agw = True
 remoteHost = 'localhost:6060'
-tokenMap = {
-    'test_user_1' : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTQ2MTY5MzYsImlhdCI6MTY5MjAyNDkzNiwicGF5bG9hZCI6IntcInVzZXJfaWRcIjpcIjEyMzQ1Njc4OTNcIixcIm5pY2tuYW1lXCI6XCJ0ZXN0X2xsZl91c2VyXzRcIixcImF2YXRhclwiOlwiaHR0cDovL3d3dy51bmtub3duLmNvbS90ZXN0X2xsZl91c2VyXzIuanBnXCJ9In0.Gno2Gi_JYv9f0f0rK8h0uII27d0NyYGdva3oPKeqDUM',
-    'test_sss_user_2': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTQ2MTY4MzEsImlhdCI6MTY5MjAyNDgzMSwicGF5bG9hZCI6IntcInVzZXJfaWRcIjpcIjEyMzQ1Njc4OTFcIixcIm5pY2tuYW1lXCI6XCJ0ZXN0X2xsZl91c2VyXzJcIixcImF2YXRhclwiOlwiaHR0cDovL3d3dy51bmtub3duLmNvbS90ZXN0X2xsZl91c2VyXzIuanBnXCJ9In0.wAUiWl25ZrYZsT5V7s-pSfLM2y9Sh_sg4W9-e7tvy-8',
-    'test_user_3': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTQ2MTY4OTksImlhdCI6MTY5MjAyNDg5OSwicGF5bG9hZCI6IntcInVzZXJfaWRcIjpcIjEyMzQ1Njc4OTJcIixcIm5pY2tuYW1lXCI6XCJ0ZXN0X2xsZl91c2VyXzNcIixcImF2YXRhclwiOlwiaHR0cDovL3d3dy51bmtub3duLmNvbS90ZXN0X2xsZl91c2VyXzIuanBnXCJ9In0.ndgVpjmxdnIxoK_juk6cg-ziSDga2Zuf1aKIJcNKFu0'
-}
 
 ws_url=f'ws://{remoteHost}/v0/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
 if use_agw:
-    remoteHost = '34.87.176.129:8000'
+    remoteHost = os.getenv("MERC_REMOTE_HOST")
     #remoteHost = 'localhost:8000'
     ws_url=f'ws://{remoteHost}/v1/chat/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
 
@@ -29,15 +34,15 @@ def on_close(ws: websocket.WebSocketApp):
     print('close socket')
 
 class User(threading.Thread):
-    def __init__(self, user_name, bcolor):
+    def __init__(self, user_name: str, bcolor):
         threading.Thread.__init__(self)
         self.q = queue.Queue(10)
         self.bcolor = bcolor
         header = {'x-uid': user_name}
         if use_agw:
             token = ''
-            if user_name in tokenMap:
-                token = tokenMap[user_name]
+            if user_name.isnumeric():
+                token = gen_jwt_token(user_name)
             else:
                 resp = requests.post(f'http://{remoteHost}/v1/user/login', json={'address': '0xxxxx', 'sign_hex': '0x21', 'type': 'metamask'})
                 token = resp.json()['data']['token']
@@ -197,4 +202,22 @@ def test_two_user():
     user_1.join()
     user_2.join()
 
-test_two_user()
+
+def remote_user():
+    users = []
+    for i in range(10):
+        user = User(str(1234567893+i), 32)
+        user.start()
+        users.append(user)
+    time.sleep(1)
+    for idx, user in enumerate(users):
+        user.login(f"TinodeWeb/0.22.8 (Edge/114.{idx}; Mac); tinodejs/0.22.8")
+        user.send({"get":{"topic":"mercGrp", "what": "rec"}})
+        user.send_wait({"pub": {"topic": "mercGrp", "content": f"{user.user_id} send message", "noecho": True, "head": user.basic_info}})
+    
+    for user in users:
+        user.join()
+        break
+
+
+remote_user()
