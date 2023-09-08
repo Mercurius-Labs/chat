@@ -69,7 +69,7 @@ func parseFlags(logFlags string) int {
 func Init(output io.Writer, logFlags string) {
 	flags := parseFlags(logFlags)
 	newLog := func(level int, prefix string) *log.Logger {
-		if logLevel >= level {
+		if logLevel <= level {
 			return log.New(output, prefix, flags)
 		}
 		return log.New(io.Discard, prefix, flags)
