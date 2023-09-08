@@ -470,19 +470,21 @@ func (s *Session) dispatchRaw(raw []byte) {
 		return
 	}
 
-	toLog := raw
-	truncated := ""
-	if len(raw) > 512 {
-		toLog = raw[:512]
-		truncated = "<...>"
-	}
-	logs.Info.Printf("in: '%s%s' sid='%s' uid='%s'", toLog, truncated, s.sid, s.uid)
-
 	if err := json.Unmarshal(raw, &msg); err != nil {
 		// Malformed message
 		logs.Warn.Println("s.dispatch", err, s.sid)
 		s.queueOut(ErrMalformed("", "", now))
 		return
+	}
+
+	if msg.Pub == nil {
+		toLog := raw
+		truncated := ""
+		if len(raw) > 512 {
+			toLog = raw[:512]
+			truncated = "<...>"
+		}
+		logs.Info.Printf("sid=%s uid=%s in: %s%s", s.sid, s.uid, toLog, truncated)
 	}
 
 	s.dispatch(&msg)
@@ -1432,6 +1434,15 @@ func (s *Session) serializeAndUpdateStats(msg *ServerComMessage) any {
 	dataSize, data := s.serialize(msg)
 	if dataSize >= 0 {
 		statsAddHistSample("OutgoingMessageSize", float64(dataSize))
+	}
+	if msg.Data == nil && dataSize > 0 {
+		toLog, ok := data.([]byte)
+		truncate := ""
+		if ok && len(toLog) > 512 {
+			toLog = toLog[:512]
+			truncate = "<...>"
+		}
+		logs.Info.Printf("sid=%s uid=%s out: %s%s", s.sid, s.uid, toLog, truncate)
 	}
 	return data
 }

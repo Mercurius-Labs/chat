@@ -18,7 +18,7 @@ def gen_jwt_token(user_name):
     key = os.getenv("MERC_SECRET_KEY")
     return jwt.encode(payload=claim, key=key, algorithm="HS256")
 
-use_agw = True
+use_agw = False
 remoteHost = 'localhost:6060'
 
 ws_url=f'ws://{remoteHost}/v0/channels?apikey=AQEAAAABAAD_rAp4DJh05a1HAwFT3A6K'
@@ -205,7 +205,7 @@ def test_two_user():
 
 def remote_user():
     users = []
-    for i in range(10):
+    for i in range(1):
         user = User(str(1234567893+i), 32)
         user.start()
         users.append(user)
@@ -220,4 +220,4 @@ def remote_user():
         break
 
 
-remote_user()
+test_two_user()

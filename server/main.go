@@ -325,7 +325,7 @@ func main() {
 	pprofUrl := flag.String("pprof_url", "", "Debugging only! URL path for exposing profiling info. Disabled if not set.")
 	flag.Parse()
 
-	logs.Init(os.Stderr, *logFlags)
+	logs.Init(os.Stdout, *logFlags)
 
 	curwd, err := os.Getwd()
 	if err != nil {

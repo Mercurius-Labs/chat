@@ -332,7 +332,6 @@ func (t *Topic) unregisterSession(msg *ClientComMessage) {
 // registerSession handles a session join (registration) request
 // received via the Topic.reg channel.
 func (t *Topic) registerSession(msg *ClientComMessage) {
-	logs.Info.Printf("reg session=%s to topic=%s", msg.sess.sid, t.name)
 	// Request to add a connection to this topic
 	if t.isInactive() {
 		msg.sess.queueOut(ErrLockedReply(msg, types.TimeNow()))
