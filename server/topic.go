@@ -2809,8 +2809,9 @@ func (t *Topic) replyGetRecUsers(sess *Session, asUid types.Uid, req *MsgGetOpts
 			if err == nil {
 				recUser.Public = user.Public
 			} else {
-				logs.Err.Printf("sid=%s, get user=%d public info failed", sess.sid, matchedUid)
+				logs.Err.Printf("sid=%s, get uid=%d public info failed", sess.sid, matchedUid)
 			}
+			logs.Info.Printf("sid=%s uid=%s, matched uid=%s", sess.sid, asUid, matchedUid)
 			sess.queueOut(&ServerComMessage{
 				Id: msg.Id,
 				Meta: &MsgServerMeta{
