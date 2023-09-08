@@ -239,6 +239,7 @@ func (s *Session) unsubAll() {
 	if !s.uid.IsZero() {
 		chat.Lobby.Leave(s.uid)
 	}
+	logs.Info.Printf("sid=%s uid=%s leave", s.sid, s.uid)
 }
 
 // Indicates whether this session is a local interface for a remote proxy topic.

@@ -70,7 +70,7 @@ func (p *LobbyUserPool) AsyncMatch(asUid types.Uid, matchTime time.Duration, cal
 	defer p.mu.Unlock()
 	asUser := p.GetUserOrInit(asUid)
 	if state := asUser.State(now); state != UserStateLobby {
-		logs.Info.Printf("user=%s state is invalid, expected=%d, actual=%d", asUid.UserId(), UserStateLobby, state)
+		logs.Info.Printf("user=%s state is invalid, expected=%d, actual=%d", asUid, UserStateLobby, state)
 		return types.ErrInvalidResponse
 	}
 	asUser.SetStateWithExpire(UserStateMatching, now.Add(matchTime))
@@ -109,7 +109,7 @@ func (p *LobbyUserPool) checkMatchTimeout() {
 			p.mu.Lock()
 			user := p.users[uid]
 			if user == nil || user.state != UserStateMatching {
-				logs.Info.Printf("uid=%d has matched, ignore this", uid)
+				logs.Info.Printf("uid=%s has matched, ignore this", uid)
 				p.mu.Unlock()
 				continue
 			}
@@ -138,11 +138,11 @@ func (p *LobbyUserPool) TryP2PChat(asUid types.Uid, targetUid types.Uid) error {
 	defer p.mu.Unlock()
 	asUser := p.GetUserOrInit(asUid)
 	if asUid == targetUid { // user triggered, update this state anyway
-		logs.Info.Printf("user=%s state is invalid, expected=%d, actual=%d", asUid.UserId(), UserStateLobby, asUser.state)
+		logs.Info.Printf("user=%s state is invalid, expected=%d, actual=%d", asUid, UserStateLobby, asUser.state)
 		return types.ErrInvalidResponse
 	}
 	if targetUser := p.GetUserOrInit(targetUid); targetUser.State(now) != UserStateLobby && targetUser.state != UserStatePreChat {
-		logs.Info.Printf("user=%s state is invalid, expected=Lobby || PreChat, actual=%d", targetUid.UserId(), targetUser.state)
+		logs.Info.Printf("user=%s state is invalid, expected=Lobby || PreChat, actual=%d", targetUid, targetUser.state)
 		return types.ErrInvalidResponse
 	}
 	asUser.SetState(UserStatePreChat)
