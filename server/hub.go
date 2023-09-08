@@ -270,7 +270,7 @@ func (h *Hub) run() {
 					logs.Warn.Printf("hub: routing to '%s' failed", msg.RcptTo)
 				}
 			} else {
-				logs.Info.Printf("hub: msg=%s redirect to %s failed", msg.Id, msg.RcptTo)
+				logs.Debug.Printf("hub: msg=%s redirect to %s failed", msg.Id, msg.RcptTo)
 			}
 		case msg := <-h.meta:
 			// Metadata read or update from a user who is not attached to the topic.
